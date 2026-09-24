@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16213A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Warehouse Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="wms-print.js"></script>
+<style>
+:root{
+  --concrete:#E4E2DC; --panel:#FFFFFF; --ink:#16213A; --muted:#5C6474;
+  --line:#CBC8BF; --hivis:#FFC400; --stop:#C62828; --go:#1E7B4F;
+  --sans:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--concrete);color:var(--ink);font:16px/1.4 var(--sans);-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:#fff;
+  display:flex;align-items:center;gap:10px;padding:10px 14px;min-height:56px}
+.bar h1{font:700 22px/1 var(--cond);margin:0;flex:1;letter-spacing:.2px}
+.bar .back{background:none;border:0;color:#fff;font-size:26px;line-height:1;padding:4px 8px 4px 0}
+.bar select{background:#24345A;border:1px solid #3C4E78;border-radius:6px;color:#fff;padding:6px 8px;max-width:48%}
+.bar .link{background:none;border:0;color:#C9D3EA;font-size:14px;text-decoration:underline}
+
+main{padding:14px 14px calc(150px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;min-height:46px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{display:block;width:100%;border:0;border-radius:6px;padding:14px;font:700 19px/1 var(--cond);letter-spacing:.3px;min-height:52px}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.go{background:var(--go);color:#fff}
+.btn.ghost{background:transparent;border:2px solid var(--ink);color:var(--ink)}
+.btn:disabled{opacity:.45}
+.hint{font-size:14px;color:var(--muted);margin:8px 0 0}
+
+/* home tiles: the job, in the words a storekeeper uses */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--ink);border-radius:6px;
+  padding:16px 14px;text-align:left;min-height:96px}
+.tile b{display:block;font:700 24px/1.05 var(--cond)}
+.tile span{font-size:14px;color:var(--muted)}
+.tile.wide{grid-column:1/-1;border-left-color:var(--hivis)}
+
+/* current bin */
+.binchip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--ink);color:#fff;
+  border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.binchip strong{font:700 22px/1 var(--cond)}
+.binchip small{color:#C9D3EA}
+.binchip select{width:auto;min-height:36px;padding:4px 8px;background:#24345A;color:#fff;border-color:#3C4E78}
+
+/* lines */
+.line{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+.line .nm{font-weight:600}
+.line .sub{font-size:13px;color:var(--muted)}
+.sers{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ser{background:#eef1f6;border:1px solid var(--line);border-radius:4px;padding:3px 8px;font:600 13px/1.3 ui-monospace,monospace}
+.ser button{background:none;border:0;color:var(--stop);font-weight:700;margin-left:4px;padding:0}
+.sers input{flex:1;min-width:140px;height:36px}
+.pick{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:8px}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{width:40px;height:40px;border:1px solid var(--line);background:#F4F3EF;border-radius:6px;font-size:22px;line-height:1}
+.qty input{width:74px;text-align:center;font:700 26px/1 var(--cond);padding:4px;min-height:40px}
+.line .rate{grid-column:1/2;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.line .rate input{width:110px;min-height:36px;padding:6px 8px}
+.line .del{background:none;border:0;color:var(--stop);font-size:14px;text-decoration:underline;justify-self:end}
+.empty{padding:22px 4px;color:var(--muted);text-align:center}
+.totals{display:flex;justify-content:space-between;align-items:baseline;padding-top:10px}
+.totals b{font:700 30px/1 var(--cond)}
+
+/* stock lookup */
+.big{font:700 44px/1 var(--cond)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+
+/* scan dock: the one loud element, hi-vis like floor tape */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--hivis);
+  padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+.dock::before{content:"";position:absolute;left:0;right:0;top:-10px;height:10px;
+  background:repeating-linear-gradient(135deg,var(--ink) 0 12px,var(--hivis) 12px 24px)}
+.dock .inner{max-width:640px;margin:0 auto;display:flex;gap:10px}
+.dock input{flex:1;border:2px solid var(--ink);font:600 18px/1 var(--sans);background:#FFF8DC}
+.dock .cam{flex:0 0 auto;background:var(--ink);color:var(--hivis);border:0;border-radius:6px;
+  padding:0 18px;font:700 20px/1 var(--cond);min-height:50px}
+.dock .actions{max-width:640px;margin:10px auto 0;display:flex;gap:10px}
+.dock .actions .btn{min-height:48px}
+
+/* camera */
+.cam-wrap{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.cam-wrap #reader{flex:1}
+.cam-wrap .camfoot{padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;color:#fff}
+.cam-wrap .camfoot span{flex:1}
+
+/* toast */
+.toast{position:fixed;left:12px;right:12px;top:calc(64px + env(safe-area-inset-top,0px));z-index:30;
+  max-width:616px;margin:0 auto;padding:12px 14px;border-radius:6px;color:#fff;background:var(--ink);font-weight:500}
+.toast.err{background:var(--stop)} .toast.ok{background:var(--go)}
+.badge{display:inline-block;min-width:22px;padding:2px 7px;border-radius:11px;background:var(--stop);color:#fff;font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+
+<header class="bar" id="bar">
+  <button class="back hidden" id="backBtn" aria-label="Back">‹</button>
+  <h1 id="title">Warehouse Scanner</h1>
+  <select id="whSelect" class="hidden" aria-label="Warehouse"></select>
+</header>
+
+<main id="main"></main>
+
+<div class="dock hidden" id="dock">
+  <div class="inner">
+    <input id="scanInput" placeholder="Scan or type barcode" autocomplete="off" autocapitalize="characters" enterkeyhint="go" aria-label="Barcode">
+    <button class="cam" id="camBtn">Camera</button>
+  </div>
+  <div class="actions hidden" id="docActions">
+    <button class="btn ghost" id="saveDraftBtn">Save draft</button>
+    <button class="btn go" id="postBtn">Post</button>
+  </div>
+</div>
+
+<div class="cam-wrap hidden" id="camWrap">
+  <div id="reader"></div>
+  <div class="camfoot"><span id="camMsg">Point at a barcode or bin label</span><button class="btn primary" style="width:auto;padding:12px 20px" id="camClose">Done</button></div>
+</div>
+
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   Warehouse Scanner — works with the WMS Supabase schema
+   (wms_schema.sql + migrations). Needs: project URL + anon key.
+   ============================================================ */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const fmt = n => Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:3});
+
+const DOC = {
+  grn:           {title:'Receive goods', prefix:'GRN-', party:'supplier', rate:'std_purchase_price'},
+  sales_invoice: {title:'Sell',          prefix:'INV-', party:'customer', rate:'mrp'},
+  transfer:      {title:'Move stock',    prefix:'TRF-'},
+  adjustment_in: {title:'Adjust stock',  prefix:'ADJ-'},
+  adjustment_out:{title:'Adjust stock',  prefix:'ADJ-'},
+  sales_return:  {title:'Customer return', prefix:'CRN-', party:'customer', rate:'mrp'},
+  purchase_return:{title:'Return to supplier', prefix:'DN-', party:'supplier'}
+};
+
+const S = {
+  sb:null, user:null, tenants:[], tenant:null, role:null, wh:null,
+  m:{items:[], byId:{}, bySku:{}, barcodes:{}, locs:[], parties:[], whs:[], sps:[]},
+  view:'home', doc:null, bin:null, lastScan:{code:'', at:0}, cam:null
+};
+
+/* ---------- UI helpers ---------- */
+let toastTimer;
+function toast(msg, kind=''){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast ' + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), kind === 'err' ? 6000 : 2500);
+}
+function beep(ok=true){
+  try{
+    const a = new (window.AudioContext || window.webkitAudioContext)(); const o = a.createOscillator(); const g = a.createGain();
+    o.frequency.value = ok ? 1250 : 320; g.gain.value = .08; o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + (ok ? .07 : .25));
+  }catch(e){}
+  if (navigator.vibrate) navigator.vibrate(ok ? 30 : [60,40,60]);
+}
+function setBar(title, {back=false, wh=false}={}){
+  $('#title').textContent = title;
+  $('#backBtn').classList.toggle('hidden', !back);
+  $('#whSelect').classList.toggle('hidden', !wh);
+}
+function showDock(scan, actions=false){
+  $('#dock').classList.toggle('hidden', !scan);
+  $('#docActions').classList.toggle('hidden', !actions);
+  if (scan) setTimeout(() => { if (document.activeElement === document.body) $('#scanInput').focus(); }, 50);
+}
+const whName = id => (S.m.whs.find(w => w.id === id) || {}).name || '';
+const binCode = id => (S.m.locs.find(l => l.id === id) || {}).full_code || 'No bin';
+const binsOf = whId => S.m.locs.filter(l => l.warehouse_id === whId);
+
+/* Built-in server: the warehouse-saas Supabase project (Mumbai). The anon key is public by design;
+   row-level security in the database decides what each signed-in user can see. */
+const WMS_SERVER = {url:'https://vubvdyupnqyuotobdebq.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1YnZkeXVwbnF5dW90b2JkZWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDA0MTQsImV4cCI6MjEwNTgxNjQxNH0.qwmvCbkzpzvFvK6QdY0_mpcX4MjkeMManr0WyvbYYtc'};
+const wmsCfg = () => LS.get('wms.cfg', null) || WMS_SERVER;
+/* ---------- Setup & login ---------- */
+function viewSetup(){
+  setBar('Server settings'); showDock(false);
+  const c = wmsCfg();
+  $('#main').innerHTML = `
+    <div class="panel">
+      <label for="u">Project URL</label><input id="u" placeholder="https://xxxx.supabase.co" value="${esc(c.url)}">
+      <label for="k">Anon (public) key</label><input id="k" value="${esc(c.key)}">
+      <p class="hint">Only change this if you are moving to another Supabase project. Use the anon key only, never the service key.</p>
+      <br><button class="btn primary" id="saveCfg">Connect</button>
+      <br><br><button class="btn" id="dfltCfg">Use built-in server</button> <button class="btn" id="backCfg">Back</button>
+    </div>`;
+  $('#dfltCfg').onclick = () => { LS.del('wms.cfg'); boot(); };
+  $('#backCfg').onclick = () => boot();
+  $('#saveCfg').onclick = () => {
+    const url = $('#u').value.trim().replace(/\/$/, ''), key = $('#k').value.trim();
+    if (!/^https:\/\/.+/.test(url) || key.length < 20) return toast('Enter the project URL and anon key.', 'err');
+    LS.set('wms.cfg', {url, key}); boot();
+  };
+}
+
+function viewLogin(){
+  setBar('Sign in'); showDock(false);
+  $('#main').innerHTML = `
+    <div class="panel">
+      <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+      <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+      <br><button class="btn primary" id="loginBtn">Sign in</button>
+      <p class="hint"><button class="link" id="chgCfg" style="background:none;border:0;padding:0;color:var(--muted);text-decoration:underline">Server settings</button></p>
+    </div>`;
+  $('#loginBtn').onclick = async () => {
+    const {error} = await S.sb.auth.signInWithPassword({email:$('#em').value.trim(), password:$('#pw').value});
+    if (error) return toast(error.message, 'err');
+    afterLogin();
+  };
+  $('#chgCfg').onclick = () => viewSetup();
+}
+
+async function boot(){
+  const c = wmsCfg();
+  if (!window.supabase) return toast('Could not load the Supabase library. Check the internet connection and reload.', 'err');
+  S.sb = window.supabase.createClient(c.url, c.key);
+  const {data} = await S.sb.auth.getSession();
+  if (!data.session) return viewLogin();
+  afterLogin();
+}
+
+async function afterLogin(){
+  const {data:{user}} = await S.sb.auth.getUser();
+  if (!user) return viewLogin();
+  S.user = user;
+  const {data, error} = await S.sb.from('tenant_users').select('tenant_id, role, tenants(name)').eq('user_id', user.id).eq('is_active', true);
+  const cachedTenants = LS.get('wms.tenants', []);
+  S.tenants = error ? cachedTenants : (data || []).map(r => ({id:r.tenant_id, role:r.role, name:r.tenants?.name || 'Company'}));
+  if (!error) LS.set('wms.tenants', S.tenants);
+  if (!S.tenants.length) {
+    setBar('No company'); showDock(false);
+    $('#main').innerHTML = `<div class="panel">This login is not linked to any company yet. Ask the company owner to add you, then sign in again.<br><br><button class="btn ghost" id="so">Sign out</button></div>`;
+    $('#so').onclick = signOut; return;
+  }
+  const ctx = LS.get('wms.ctx', {});
+  const t = S.tenants.find(x => x.id === ctx.tenant) || (S.tenants.length === 1 ? S.tenants[0] : null);
+  if (!t) return viewPickCompany();
+  await useTenant(t, ctx.wh);
+}
+
+function viewPickCompany(){
+  setBar('Choose company'); showDock(false);
+  $('#main').innerHTML = S.tenants.map(t => `<button class="tile" style="width:100%;margin-bottom:10px" data-t="${t.id}"><b>${esc(t.name)}</b><span>${esc(t.role)}</span></button>`).join('');
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => useTenant(S.tenants.find(t => t.id === b.dataset.t)));
+}
+
+async function useTenant(t, whId){
+  S.tenant = t.id; S.role = t.role;
+  await loadMasters();
+  S.wh = (S.m.whs.find(w => w.id === whId) || S.m.whs[0] || {}).id || null;
+  LS.set('wms.ctx', {tenant:S.tenant, wh:S.wh});
+  const sel = $('#whSelect');
+  sel.innerHTML = S.m.whs.map(w => `<option value="${w.id}" ${w.id === S.wh ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+  sel.onchange = () => { S.wh = sel.value; S.bin = null; LS.set('wms.ctx', {tenant:S.tenant, wh:S.wh}); if (S.view === 'home') viewHome(); };
+  flushOutbox();
+  viewHome();
+}
+
+async function signOut(){ await S.sb.auth.signOut(); LS.del('wms.ctx'); location.reload(); }
+
+/* ---------- Masters (cached for offline scanning) ---------- */
+async function fetchAll(table, cols){
+  const out = []; const size = 1000;
+  for (let from = 0; ; from += size){
+    const {data, error} = await S.sb.from(table).select(cols).eq('tenant_id', S.tenant).range(from, from + size - 1);
+    if (error) throw error;
+    out.push(...data); if (data.length < size) break;
+  }
+  return out;
+}
+async function loadMasters(){
+  const key = 'wms.cache.' + S.tenant;
+  let m;
+  try{
+    const [items, bcs, locs, parties, whs, sps] = await Promise.all([
+      fetchAll('items', 'id,sku,name,uom,hsn_code,mrp,std_purchase_price,is_active,track_serial,kit_type,is_template'),
+      fetchAll('item_barcodes', 'barcode,item_id,pack_qty'),
+      fetchAll('locations', 'id,warehouse_id,full_code,is_active'),
+      fetchAll('parties', 'id,name,party_type,gstin,state_code,is_active'),
+      fetchAll('warehouses', 'id,code,name,state_code,gstin,is_active,receiving_location_id'),
+      fetchAll('sales_points', 'id,name,sp_type,warehouse_id,is_active')
+    ]);
+    m = {items, bcs, locs, parties, whs, sps, at:Date.now()};
+    LS.set(key, m);
+  }catch(e){
+    m = LS.get(key, null);
+    if (!m) { toast('Could not load item list. Check the connection and reopen the app.', 'err'); m = {items:[],bcs:[],locs:[],parties:[],whs:[],sps:[]}; }
+    else toast('Offline: using the item list saved on this phone.');
+  }
+  const act = a => a.filter(x => x.is_active !== false);
+  S.m.items = act(m.items).filter(i => !i.is_template); S.m.locs = act(m.locs); S.m.parties = act(m.parties); S.m.whs = act(m.whs); S.m.sps = act(m.sps);
+  S.m.byId = {}; S.m.bySku = {}; S.m.barcodes = {};
+  S.m.items.forEach(i => { S.m.byId[i.id] = i; S.m.bySku[i.sku.toUpperCase()] = i; });
+  m.bcs.forEach(b => { S.m.barcodes[b.barcode.toUpperCase()] = b; });
+}
+
+/* ---------- Home ---------- */
+function viewHome(){
+  S.view = 'home'; S.doc = null;
+  const t = S.tenants.find(x => x.id === S.tenant) || {};
+  setBar(t.name || 'Warehouse', {wh:true}); showDock(false);
+  const n = LS.get('wms.outbox', []).filter(o => o.tenant === S.tenant).length;
+  $('#main').innerHTML = `
+    <div class="tiles">
+      <button class="tile" data-go="grn"><b>Receive goods</b><span>Supplier delivery into bins</span></button>
+      <button class="tile" data-go="sales_invoice"><b>Sell</b><span>Store or kiosk bill</span></button>
+      <button class="tile" data-go="transfer"><b>Move stock</b><span>To another bin or warehouse</span></button>
+      <button class="tile" data-go="adjustment_in"><b>Adjust stock</b><span>After a physical count</span></button>
+      <button class="tile" data-go="pick"><b>Pick and pack</b><span>Sales orders ready to go</span></button>
+      <button class="tile" data-go="count"><b>Count stock</b><span>Physical verification by bin</span></button>
+      <button class="tile" data-go="sales_return"><b>Customer return</b><span>Good or damaged goods back</span></button>
+      <button class="tile" data-go="purchase_return"><b>Return to supplier</b><span>Damaged, expired or excess</span></button>
+      <button class="tile" data-go="putaway"><b>Put away</b><span>From receiving bay into bins</span></button>
+      <button class="tile" data-go="refill"><b>Refill bins</b><span>Pick faces below minimum</span></button>
+      <button class="tile wide" data-go="lookup"><b>Check stock</b><span>Scan an item to see quantity by bin</span></button>
+      <button class="tile" data-go="outbox"><b>Waiting to send ${n ? `<span class="badge">${n}</span>` : ''}</b><span>Saved while offline</span></button>
+      <button class="tile" data-go="refresh"><b>Refresh items</b><span>Get new items and bins</span></button>
+    </div>
+    <p class="hint" style="text-align:center;margin-top:18px">${esc(S.user?.email)}, ${esc(S.role)}.
+      <button id="so" style="background:none;border:0;color:var(--muted);text-decoration:underline;padding:0">Sign out</button></p>`;
+  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+    const g = b.dataset.go;
+    if (g === 'lookup') return viewLookup();
+    if (g === 'outbox') return viewOutbox();
+    if (g === 'pick') return viewPickLists();
+    if (g === 'count') return viewCounts();
+    if (g === 'putaway') return viewPutaway();
+    if (g === 'refill') return viewRefills();
+    if (g === 'refresh') return loadMasters().then(() => { toast(`${S.m.items.length} items loaded.`, 'ok'); viewHome(); });
+    startDoc(g);
+  });
+  $('#so').onclick = signOut;
+}
+
+/* ---------- Scanning ---------- */
+function onScan(raw){
+  const code = String(raw || '').trim().toUpperCase();
+  if (!code) return;
+  const now = Date.now();
+  if (code === S.lastScan.code && now - S.lastScan.at < 1500) return;   // camera double-read
+  S.lastScan = {code, at:now};
+
+  if (S.view === 'doc' && S.pendingSerial){ const ps = S.pendingSerial; S.pendingSerial = null; beep(); return addSerial(ps.item, code, ps.code); }
+  const loc = S.m.locs.find(l => l.full_code.toUpperCase() === code && l.warehouse_id === S.wh);
+  if (loc){
+    if (S.view === 'move'){ S.move.to = loc.id; beep(); return renderMove(); }
+    S.bin = loc.id; beep(); toast('Bin ' + loc.full_code);
+    if (S.view === 'doc') renderDoc();
+    if (S.view === 'pick') renderPick();
+    if (S.view === 'count') renderCount();
+    return;
+  }
+  const bc = S.m.barcodes[code];
+  const item = bc ? S.m.byId[bc.item_id] : S.m.bySku[code];
+  if (!item){
+    if (S.view === 'doc') return serialLookup(code);
+    beep(false); toast(`${code} is not a known item or bin in this warehouse.`, 'err'); return;
+  }
+  beep();
+  if (S.view === 'doc' && item.track_serial){ S.pendingSerial = {item, code}; toast(`Now scan the serial number of ${item.name}.`); return renderDoc(); }
+  if (S.view === 'lookup') return showStock(item);
+  if (S.view === 'doc') addLine(item, bc ? num(bc.pack_qty) : 1, code);
+  if (S.view === 'pick') pickScan(item, bc ? num(bc.pack_qty) : 1);
+  if (S.view === 'count') countScan(item, bc ? num(bc.pack_qty) : 1);
+}
+
+async function openCamera(){
+  if (!window.Html5Qrcode) return toast('Camera scanner did not load. Check the connection.', 'err');
+  $('#camWrap').classList.remove('hidden');
+  S.cam = new Html5Qrcode('reader');
+  try{
+    await S.cam.start({facingMode:'environment'}, {fps:10, qrbox:{width:260, height:150}},
+      text => { onScan(text); $('#camMsg').textContent = 'Scanned ' + text; }, () => {});
+  }catch(e){
+    closeCamera(); toast('Camera blocked. Allow camera access for this site in the browser settings.', 'err');
+  }
+}
+async function closeCamera(){
+  $('#camWrap').classList.add('hidden');
+  if (S.cam){ try{ await S.cam.stop(); S.cam.clear(); }catch(e){} S.cam = null; }
+}
+
+/* ---------- Documents ---------- */
+function startDoc(type){
+  S.view = 'doc';
+  S.doc = {type, lines:[], party_id:'', party_doc_no:'', party_doc_date:today(), to_wh:'', to_loc:'',
+           sales_point_id:'', incl_tax:true, doc_date:today(), order_id:'', po:null, poOptions:null,
+           condition:'good', reason:'', against_no:'', paid:true};
+  renderDoc();
+}
+
+function addSerial(item, serial, code){
+  const d = S.doc; serial = String(serial).trim().toUpperCase();
+  if (!serial) return;
+  if (d.lines.some(l => (l.serials || []).includes(serial) && l.item_id === item.id)){ beep(false); toast(`Serial ${serial} is already on this entry.`, 'err'); return renderDoc(); }
+  let ln = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null));
+  if (!ln){ addLine(item, 0, code); ln = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null)); }
+  ln.serials = (ln.serials || []).concat(serial); ln.qty = ln.serials.length;
+  renderDoc();
+}
+async function serialLookup(code){
+  const d = S.doc;
+  if (!navigator.onLine){ beep(false); return toast(`${code} is not a known item or bin.`, 'err'); }
+  const {data} = await S.sb.from('item_serials').select('item_id,status,warehouse_id').eq('tenant_id', S.tenant).eq('serial_no', code).limit(2);
+  const hit = (data || []).find(x => d.type === 'sales_return' ? x.status === 'sold' : x.status === 'in_stock' && x.warehouse_id === S.wh);
+  if (!hit){ beep(false); return toast(`${code} is not a known item, bin or serial number here.`, 'err'); }
+  beep(); addSerial(S.m.byId[hit.item_id] || {id:hit.item_id, name:'Item', sku:''}, code, code);
+}
+function addLine(item, qty, code){
+  const d = S.doc, cfg = DOC[d.type];
+  if (d.po && !d.po.some(p => p.item_id === item.id)){ beep(false); toast(`${item.sku} is not on this purchase order.`, 'err'); }
+  const pol = d.po ? d.po.find(p => p.item_id === item.id) : null;
+  const ex = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null));
+  if (ex && item.track_serial) return;
+  if (ex) ex.qty = +(num(ex.qty) + qty).toFixed(3);
+  else d.lines.unshift({item_id:item.id, location_id:S.bin || null, barcode:code, qty,
+                        rate: pol ? num(pol.rate) / num(pol.unit_factor || 1) : cfg.rate ? num(item[cfg.rate]) : null,
+                        discount_pct: pol ? num(pol.discount_pct) : null,
+                        order_line_id: pol ? pol.order_line_id : null});
+  renderDoc();
+}
+
+function renderDoc(){
+  const d = S.doc, cfg = DOC[d.type];
+  setBar(cfg.title, {back:true}); showDock(true, true);
+  const parties = S.m.parties.filter(p => cfg.party && (p.party_type === cfg.party || p.party_type === 'both'));
+  const otherWhs = S.m.whs;
+  let head = '';
+  if (d.type === 'grn') head = `
+    <label for="pty">Supplier</label>
+    <select id="pty"><option value="">Choose supplier</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    <div class="row"><div><label for="pdn">Supplier bill no.</label><input id="pdn" value="${esc(d.party_doc_no)}"></div>
+    <div><label for="pdd">Bill date</label><input id="pdd" type="date" value="${esc(d.party_doc_date)}"></div></div>
+    <label for="por">Against purchase order</label>
+    <select id="por"><option value="">No order</option>${(d.poOptions || []).map(o => `<option value="${o.id}" ${o.id === d.order_id ? 'selected' : ''}>${esc(o.order_no)}, ${fmt(o.pending_qty)} pending</option>`).join('')}</select>
+    ${d.po ? `<div style="margin-top:10px">${d.po.map(p => { const got = d.lines.filter(l => l.item_id === p.item_id).reduce((a, l) => a + num(l.qty), 0);
+        return `<div class="sub" style="display:flex;justify-content:space-between;padding:3px 0"><span>${esc(p.item_name)}</span><span>${fmt(got)} of ${fmt(p.pending_qty)}</span></div>`; }).join('')}</div>` : ''}`;
+  if (d.type === 'sales_return') head = `
+    <label for="pty">Customer</label>
+    <select id="pty"><option value="">Walk-in customer</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    <div class="row">
+      <div><label for="agn">Original invoice no.</label><input id="agn" value="${esc(d.against_no)}" placeholder="INV-00012"></div>
+      <div><label for="cnd">Condition</label><select id="cnd">${[['good','Good, resell'],['damaged','Damaged'],['expired','Expired']].map(([v, l]) => `<option value="${v}" ${d.condition === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    </div>
+    <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Leaking, wrong item, …">
+    ${d.condition !== 'good' ? '<p class="hint">Damaged and expired goods go to the quarantine bin and are not sold.</p>' : ''}`;
+  if (d.type === 'sales_invoice') head = `
+    <label for="pty">Customer</label>
+    <select id="pty"><option value="">Walk-in customer</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}${p.gstin ? ', ' + esc(p.gstin) : ''}</option>`).join('')}</select>
+    ${d.party_id ? `<label for="paid">Payment</label><select id="paid"><option value="1" ${d.paid ? 'selected' : ''}>Paid now at the counter</option><option value="0" ${!d.paid ? 'selected' : ''}>On credit (goes to customer dues)</option></select>` : ''}
+    <div class="row">
+      <div><label for="sp">Counter</label><select id="sp"><option value="">None</option>${S.m.sps.filter(s => s.warehouse_id === S.wh).map(s => `<option value="${s.id}" ${s.id === d.sales_point_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div><label for="inc">Prices</label><select id="inc"><option value="1" ${d.incl_tax ? 'selected' : ''}>Include GST (MRP)</option><option value="0" ${!d.incl_tax ? 'selected' : ''}>Exclude GST</option></select></div>
+    </div>`;
+  if (d.type === 'transfer') head = `
+    <label for="tow">Move to warehouse</label>
+    <select id="tow"><option value="">Choose</option>${otherWhs.map(w => `<option value="${w.id}" ${w.id === d.to_wh ? 'selected' : ''}>${esc(w.name)}${w.id === S.wh ? ' (same, bin to bin)' : ''}</option>`).join('')}</select>
+    ${d.to_wh && d.to_wh !== S.wh && (S.m.whs.find(w => w.id === d.to_wh) || {}).gstin !== (S.m.whs.find(w => w.id === S.wh) || {}).gstin
+      ? '<p class="hint">Different GSTIN: this is billed as a tax invoice with GST, and the receiving branch takes the credit.</p>'
+      : d.to_wh && d.to_wh !== S.wh ? '<p class="hint">Same GSTIN: a delivery challan is made. No GST.</p>' : ''}
+    <label for="tol">Into bin</label>
+    <select id="tol"><option value="">No bin</option>${binsOf(d.to_wh).map(l => `<option value="${l.id}" ${l.id === d.to_loc ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select>`;
+  if (d.type === 'purchase_return') head = `
+    <label for="pty">Supplier</label>
+    <select id="pty"><option value="">Choose supplier</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    <label for="agn">Against GRN no. (optional)</label><input id="agn" value="${esc(d.against_no)}" placeholder="GRN/2627/00012">
+    <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Damaged, expired, excess supply, …">
+    <p class="hint">This supplier's own stock goes back first. The rate comes from the GRN when you give its number.</p>`;
+  if (d.type.startsWith('adjustment')) head = `
+    <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Breakage, found in store, …">
+    <label for="adj">Count result</label>
+    <select id="adj"><option value="adjustment_in" ${d.type === 'adjustment_in' ? 'selected' : ''}>Found extra, add stock</option>
+      <option value="adjustment_out" ${d.type === 'adjustment_out' ? 'selected' : ''}>Found short, remove stock</option></select>`;
+
+  const bins = binsOf(S.wh);
+  const binLabel = ['grn','adjustment_in','sales_return'].includes(d.type) ? 'Putting into' : 'Taking from';
+  const totalQty = d.lines.reduce((a, l) => a + num(l.qty), 0);
+  const totalVal = cfg.rate ? d.lines.reduce((a, l) => a + num(l.qty) * num(l.rate), 0) : null;
+
+  $('#main').innerHTML = `
+    <div class="panel">${head}
+      <label for="ddt">Date</label><input id="ddt" type="date" value="${esc(d.doc_date)}" max="${today()}">
+      <p class="hint">${esc(whName(S.wh))}</p>
+    </div>
+    <div class="binchip"><div><small>${binLabel}</small><br><strong>${esc(S.bin ? binCode(S.bin) : 'No bin')}</strong></div>
+      <select id="binSel" aria-label="Bin"><option value="">No bin</option>${bins.map(l => `<option value="${l.id}" ${l.id === S.bin ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select></div>
+    <div class="panel">
+      ${d.lines.length ? d.lines.map((l, ix) => {
+        const it = S.m.byId[l.item_id] || {};
+        return `<div class="line">
+          <div><div class="nm">${esc(it.name)}</div><div class="sub">${esc(it.sku)}, bin ${esc(l.location_id ? binCode(l.location_id) : 'none')}${it.kit_type === 'bundle' ? ', bundle' : ''}</div></div>
+          ${it.track_serial ? `<div class="qty"><b style="font-size:20px">${l.qty}</b></div>` : `<div class="qty"><button data-dec="${ix}" aria-label="Less">−</button><input data-q="${ix}" inputmode="decimal" value="${l.qty}" aria-label="Quantity"><button data-inc="${ix}" aria-label="More">+</button></div>`}
+          ${it.track_serial ? `<div class="sers">${(l.serials || []).map((sn, k) => `<span class="ser">${esc(sn)}<button data-sdel="${ix}|${k}" aria-label="Remove ${esc(sn)}">×</button></span>`).join('')}
+            <input data-sadd="${ix}" placeholder="Type or scan serial no." aria-label="Add serial number"></div>` : ''}
+          ${cfg.rate ? `<div class="rate">${d.type === 'grn' ? 'Rate' : 'Price'} ₹<input data-r="${ix}" inputmode="decimal" value="${l.rate ?? ''}"></div>` : '<div></div>'}
+          <button class="del" data-del="${ix}">Remove</button>
+        </div>`;}).join('')
+      : `<div class="empty">Scan a bin label to choose the bin, then scan items. Each scan adds one pack.</div>`}
+      ${S.pendingSerial ? `<p class="hint" style="color:var(--stop)">Waiting for the serial number of ${esc(S.pendingSerial.item.name)}. Scan it now.</p>` : ''}
+      <div class="totals"><span>${d.lines.length} item(s)</span><span><b>${fmt(totalQty)}</b> units${totalVal !== null ? `, ₹${fmt(totalVal)}` : ''}</span></div>
+    </div>`;
+
+  const bind = (id, fn) => { const el = $(id); if (el) el.onchange = fn; };
+  bind('#pty', e => { d.party_id = e.target.value; if (d.type === 'grn'){ d.order_id = ''; d.po = null; loadPoOptions(); } else renderDoc(); });
+  bind('#por', e => { d.order_id = e.target.value; loadPoLines(); });
+  bind('#agn', e => { d.against_no = e.target.value.trim(); });
+  bind('#cnd', e => { d.condition = e.target.value; renderDoc(); });
+  bind('#rsn', e => { d.reason = e.target.value.trim(); });
+  bind('#paid', e => { d.paid = e.target.value === '1'; });
+  bind('#pdn', e => { d.party_doc_no = e.target.value.trim(); });
+  bind('#pdd', e => { d.party_doc_date = e.target.value; });
+  bind('#sp',  e => { d.sales_point_id = e.target.value; });
+  bind('#inc', e => { d.incl_tax = e.target.value === '1'; });
+  bind('#tow', e => { d.to_wh = e.target.value; d.to_loc = ''; renderDoc(); });
+  bind('#tol', e => { d.to_loc = e.target.value; });
+  bind('#adj', e => { d.type = e.target.value; renderDoc(); });
+  bind('#ddt', e => { d.doc_date = e.target.value; });
+  bind('#binSel', e => { S.bin = e.target.value || null; renderDoc(); });
+  document.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const l = d.lines[b.dataset.inc]; l.qty = +(num(l.qty) + 1).toFixed(3); renderDoc(); });
+  document.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { const l = d.lines[b.dataset.dec]; l.qty = Math.max(0, +(num(l.qty) - 1).toFixed(3)); renderDoc(); });
+  document.querySelectorAll('[data-q]').forEach(i => i.onchange = () => { d.lines[i.dataset.q].qty = num(i.value); renderDoc(); });
+  document.querySelectorAll('[data-r]').forEach(i => i.onchange = () => { d.lines[i.dataset.r].rate = num(i.value); renderDoc(); });
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { d.lines.splice(b.dataset.del, 1); renderDoc(); });
+  document.querySelectorAll('[data-sdel]').forEach(b => b.onclick = () => { const [ix, k] = b.dataset.sdel.split('|').map(Number); const l = d.lines[ix];
+    l.serials.splice(k, 1); l.qty = l.serials.length; if (!l.qty) d.lines.splice(ix, 1); renderDoc(); });
+  document.querySelectorAll('[data-sadd]').forEach(i => i.onchange = () => { const l = d.lines[i.dataset.sadd]; const prev = S.bin; S.bin = l.location_id;
+    addSerial(S.m.byId[l.item_id], i.value, l.barcode); S.bin = prev; renderDoc(); });
+}
+
+async function loadPoOptions(){
+  const d = S.doc; d.poOptions = [];
+  if (d.party_id){
+    const {data} = await S.sb.from('v_orders').select('id,order_no,pending_qty,warehouse').eq('tenant_id', S.tenant)
+      .eq('order_type', 'purchase').eq('status', 'confirmed').eq('party_id', d.party_id).gt('pending_qty', 0).order('order_date');
+    d.poOptions = (data || []).filter(o => o.warehouse === whName(S.wh));
+  }
+  if (S.view === 'doc' && S.doc === d) renderDoc();
+}
+async function loadPoLines(){
+  const d = S.doc; d.po = null;
+  if (d.order_id){
+    const {data, error} = await S.sb.from('v_order_lines_status').select('order_line_id,item_id,item_name,pending_qty,rate,discount_pct,unit')
+      .eq('order_id', d.order_id).gt('pending_qty', 0);
+    if (error) return toast(error.message, 'err');
+    const {data:ol} = await S.sb.from('order_lines').select('id,unit_factor').eq('order_id', d.order_id);
+    const f = Object.fromEntries((ol || []).map(x => [x.id, x.unit_factor]));
+    d.po = (data || []).map(x => ({...x, unit_factor:f[x.order_line_id] || 1}));
+  }
+  renderDoc();
+}
+
+function validateDoc(d){
+  const lines = d.lines.filter(l => num(l.qty) > 0);
+  if (!lines.length) return 'Add at least one item.';
+  if (d.type === 'grn' && !d.party_id) return 'Choose the supplier.';
+  if (d.type === 'grn' && !d.party_doc_no) return "Enter the supplier's bill number.";
+  if (d.type === 'sales_return' && !d.reason) return 'Enter the reason for the return.';
+  if (d.type === 'transfer' && !d.to_wh) return 'Choose where the stock is going.';
+  if (d.type === 'transfer' && d.to_wh === S.wh && !d.to_loc) return 'Choose the bin to move into.';
+  if (d.type === 'purchase_return' && !d.party_id) return 'Choose the supplier.';
+  if (d.type === 'purchase_return' && !d.reason) return 'Enter the reason for the return.';
+  const bad = lines.find(l => (S.m.byId[l.item_id] || {}).track_serial && (l.serials || []).length !== num(l.qty));
+  if (bad) return `Scan a serial number for each unit of ${S.m.byId[bad.item_id].name}.`;
+  if (d.doc_date > today()) return 'The date cannot be in the future.';
+  return null;
+}
+
+function buildPayload(d, post){
+  const party = S.m.parties.find(p => p.id === d.party_id);
+  const header = {
+    tenant_id:S.tenant, doc_type:d.type, doc_date:d.doc_date, warehouse_id:S.wh,
+    party_id:d.party_id || null,
+    party_doc_no:d.type === 'grn' ? d.party_doc_no : null,
+    party_doc_date:d.type === 'grn' ? d.party_doc_date : null,
+    to_warehouse_id:d.type === 'transfer' ? d.to_wh : null,
+    sales_point_id:d.sales_point_id || null,
+    place_of_supply:d.type === 'sales_invoice' && party?.state_code ? party.state_code : null,
+    prices_include_tax:d.type === 'sales_invoice' ? d.incl_tax : false,
+    order_id:d.order_id || null, reason:d.reason || null,
+    paid_at_counter:d.type === 'sales_invoice' ? (!d.party_id || d.paid) : false
+  };
+  const lines = d.lines.filter(l => num(l.qty) > 0).reverse().map((l, ix) => ({
+    line_no:ix + 1, item_id:l.item_id, barcode:l.barcode, location_id:l.location_id,
+    to_location_id:d.type === 'transfer' ? (d.to_loc || null) : null,
+    qty:num(l.qty), rate:l.rate === null || l.rate === '' ? null : num(l.rate),
+    discount_pct:l.discount_pct ?? null, order_line_id:l.order_line_id || null,
+    condition:d.type === 'sales_return' ? d.condition : 'good'
+  }));
+  const serials = {};
+  d.lines.filter(l => num(l.qty) > 0).reverse().forEach((l, ix) => { if ((l.serials || []).length) serials[ix + 1] = l.serials; });
+  return {tenant:S.tenant, prefix:DOC[d.type].prefix, header, lines, serials, post, against_no:d.against_no || null, queuedAt:new Date().toISOString()};
+}
+
+async function nextDocNo(type, prefix, table='documents', col='doc_no'){
+  let q = S.sb.from(table).select(col).eq('tenant_id', S.tenant).like(col, prefix + '%').order('created_at', {ascending:false}).limit(1);
+  if (table === 'documents') q = q.eq('doc_type', type);
+  const {data, error} = await q;
+  if (error) throw error;
+  const last = data[0]?.[col] || '';
+  const n = parseInt((last.match(/(\d+)$/) || [0, 0])[1], 10) + 1;
+  return prefix + String(n).padStart(5, '0');        // e.g. INV-00042 (GST limit is 16 characters)
+}
+
+const draftNo = () => 'DRAFT-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+async function finalNo(id){ const {data} = await S.sb.from('documents').select('doc_no').eq('id', id).single(); return data ? data.doc_no : ''; }
+async function sendPayload(p){
+  let docId = null, docNo = null;
+  if (p.against_no && !p.header.against_doc_id){
+    const agType = p.header.doc_type === 'purchase_return' ? 'grn' : 'sales_invoice';
+    const {data} = await S.sb.from('documents').select('id').eq('tenant_id', S.tenant).eq('doc_type', agType).eq('doc_no', p.against_no.toUpperCase()).maybeSingle();
+    if (!data) throw new Error(`${agType === 'grn' ? 'GRN' : 'Invoice'} ${p.against_no} was not found. Check the number or leave it blank.`);
+    p.header.against_doc_id = data.id;
+  }
+  docNo = draftNo();
+  const {data, error} = await S.sb.from('documents').insert({...p.header, doc_no:docNo}).select('id').single();
+  if (error) throw error;
+  docId = data.id;
+  const hasSer = p.serials && Object.keys(p.serials).length;
+  const ins = S.sb.from('document_lines').insert(p.lines.map(l => ({...l, document_id:docId})));
+  const {data:ld, error:le} = hasSer ? await ins.select('id,line_no') : await ins;
+  if (le){ await S.sb.from('documents').delete().eq('id', docId); throw le; }
+  if (hasSer){
+    const rows = [];
+    (ld || []).forEach(x => (p.serials[x.line_no] || []).forEach(sn => rows.push({document_line_id:x.id, serial_no:sn})));
+    const {error:se} = await S.sb.from('document_line_serials').insert(rows);
+    if (se){ await S.sb.from('documents').delete().eq('id', docId); throw se; }
+  }
+  if (p.post){ await postWithPrompts(docId, docNo); docNo = await finalNo(docId); }
+  return {no:docNo, id:docId};
+}
+
+async function postWithPrompts(docId, docNo){
+  let neg = false, warn = false, error = null;
+  for (let i = 0; i < 3; i++){
+    ({error} = await S.sb.rpc('post_document', {p_doc_id:docId, p_confirm_negative:neg, p_confirm_warnings:warn}));
+    if (!error) break;
+    if (error.hint === 'WARNINGS_CONFIRM' && !warn && confirm(error.message + '\n\nPost anyway?')){ warn = true; continue; }
+    if (error.hint === 'NEGATIVE_STOCK_CONFIRM' && !neg && confirm(error.message + '\n\nPost anyway?')){ neg = true; continue; }
+    break;
+  }
+  if (error && error.hint === 'APPROVAL_REQUIRED'){
+    const note = prompt(error.message + '\n\nAsk a manager to approve? Add a note for them (optional):', '');
+    if (note !== null){
+      const {error:re} = await S.sb.rpc('request_approval', {p_doc:docId, p_action:'post', p_note:note});
+      const e = new Error(re ? `Saved as a draft. Approval could not be requested: ${re.message}` : 'Saved as a draft and sent for approval. Once approved, post it from the office screen.');
+      e.saved = true; throw e;
+    }
+  }
+  if (error){
+    const extra = error.hint === 'NEGATIVE_STOCK_APPROVAL' ? ' A manager can approve it from the office screen.' : '';
+    const e = new Error(`Saved as a draft but not posted. ${error.message}${extra}`); e.saved = true; throw e;
+  }
+}
+
+async function submitDoc(post){
+  const d = S.doc, err = validateDoc(d);
+  if (err) return toast(err, 'err');
+  const p = buildPayload(d, post);
+  const btns = [$('#postBtn'), $('#saveDraftBtn')]; btns.forEach(b => b.disabled = true);
+  try{
+    if (!navigator.onLine) throw Object.assign(new Error('offline'), {offline:true});
+    const res = await sendPayload(p);
+    toast(post ? `${res.no} posted.` : 'Saved as draft.', 'ok');
+    S.bin = null; viewHome();
+    if (post && ['sales_invoice','sales_return','transfer','purchase_return'].includes(p.header.doc_type) && window.WMSPrint
+        && confirm(`${res.no} posted. Print or share it now?`))
+      WMSPrint.doc(S.sb, res.id, {format:p.header.doc_type === 'sales_invoice' && !p.header.party_id ? 'thermal' : 'a4'}).catch(e => toast(e.message, 'err'));
+  }catch(e){
+    if (e.offline || /fetch|network/i.test(e.message)){
+      const ob = LS.get('wms.outbox', []); ob.push(p); LS.set('wms.outbox', ob);
+      toast('No connection. Saved on this phone and will send when back online.', 'ok'); viewHome();
+    } else if (e.saved){ toast(e.message, 'err'); viewHome(); }
+    else toast(e.message || 'Could not save.', 'err');
+  }finally{ btns.forEach(b => b.disabled = false); }
+}
+
+/* ---------- Offline outbox ---------- */
+let flushing = false;
+async function flushOutbox(){
+  if (flushing || !navigator.onLine || !S.tenant) return;
+  flushing = true;
+  let ob = LS.get('wms.outbox', []); const keep = []; let sent = 0; const problems = [];
+  for (const p of ob){
+    if (p.tenant !== S.tenant){ keep.push(p); continue; }
+    try{ await sendPayload(p); sent++; }
+    catch(e){
+      if (e.saved){ sent++; problems.push(e.message); }
+      else if (/fetch|network/i.test(e.message)) keep.push(p);
+      else { p.lastError = e.message; keep.push(p); problems.push(e.message); }
+    }
+  }
+  LS.set('wms.outbox', keep); flushing = false;
+  if (sent) toast(`${sent} saved entr${sent === 1 ? 'y' : 'ies'} sent.`, 'ok');
+  if (problems.length) setTimeout(() => toast(problems[0], 'err'), 2600);
+  if (S.view === 'home' || S.view === 'outbox') (S.view === 'home' ? viewHome : viewOutbox)();
+}
+
+function viewOutbox(){
+  S.view = 'outbox'; setBar('Waiting to send', {back:true}); showDock(false);
+  const ob = LS.get('wms.outbox', []).filter(o => o.tenant === S.tenant);
+  $('#main').innerHTML = ob.length ? `
+    <div class="panel">${ob.map(p => `<div class="line"><div><div class="nm">${esc(DOC[p.header.doc_type].title)}, ${p.lines.length} item(s)</div>
+      <div class="sub">Saved ${esc(new Date(p.queuedAt).toLocaleString('en-IN'))}${p.lastError ? `<br><span style="color:var(--stop)">${esc(p.lastError)}</span>` : ''}</div></div></div>`).join('')}</div>
+    <button class="btn primary" id="sendNow">Send now</button>`
+    : `<div class="panel empty">Nothing waiting. Entries made without a connection appear here until they are sent.</div>`;
+  const b = $('#sendNow'); if (b) b.onclick = flushOutbox;
+}
+
+/* ---------- Stock lookup ---------- */
+function viewLookup(){
+  S.view = 'lookup'; setBar('Check stock', {back:true}); showDock(true, false);
+  $('#main').innerHTML = `<div class="panel empty">Scan an item barcode to see its stock in every bin.</div>`;
+}
+async function showStock(item){
+  $('#main').innerHTML = `<div class="panel"><div class="nm" style="font-weight:600">${esc(item.name)}</div><p class="hint">Loading stock…</p></div>`;
+  const [loc, av, gst] = await Promise.all([
+    S.sb.from('v_stock_by_location').select('warehouse_id,warehouse,bin,qty_on_hand').eq('item_id', item.id),
+    S.sb.from('v_available_stock').select('qty_on_hand,qty_reserved,qty_available').eq('item_id', item.id).eq('warehouse_id', S.wh).maybeSingle(),
+    S.sb.from('item_gst_rates').select('gst_rate,effective_from').eq('item_id', item.id).lte('effective_from', today()).order('effective_from', {ascending:false}).limit(1)
+  ]);
+  if (loc.error) return toast('Stock could not be loaded. Check the connection.', 'err');
+  const a = av.data || {qty_on_hand:0, qty_reserved:0, qty_available:0};
+  const rows = (loc.data || []).sort((x, y) => (x.warehouse_id === S.wh ? -1 : 1) - (y.warehouse_id === S.wh ? -1 : 1));
+  $('#main').innerHTML = `
+    <div class="panel">
+      <div style="font-weight:600;font-size:18px">${esc(item.name)}</div>
+      <div class="hint" style="margin:2px 0 12px">${esc(item.sku)}, HSN ${esc(item.hsn_code)}${gst.data?.[0] ? `, GST ${gst.data[0].gst_rate}%` : ''}${item.mrp ? `, MRP ₹${fmt(item.mrp)}` : ''}</div>
+      <div class="row">
+        <div><div class="big">${fmt(a.qty_available)}</div><div class="hint">available in ${esc(whName(S.wh))}</div></div>
+        <div><div class="big" style="color:var(--muted)">${fmt(a.qty_reserved)}</div><div class="hint">held for orders</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      ${rows.length ? `<table><thead><tr><th>Warehouse</th><th>Bin</th><th class="n">Qty</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td>${esc(r.warehouse)}</td><td>${esc(r.bin || 'No bin')}</td><td class="n">${fmt(r.qty_on_hand)}</td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty">No stock anywhere. Receive goods to add stock.</div>`}
+    </div>`;
+}
+
+/* ---------- Put away and refill (bin-to-bin moves) ---------- */
+async function viewPutaway(){
+  S.view = 'putaway'; setBar('Put away', {back:true}); showDock(false);
+  $('#main').innerHTML = `<div class="panel empty">Loading…</div>`;
+  const {data, error} = await S.sb.from('v_putaway_pending').select('*').eq('warehouse_id', S.wh).order('since');
+  if (error) return toast(error.message, 'err');
+  const wh = S.m.whs.find(w => w.id === S.wh) || {};
+  $('#main').innerHTML = !wh.receiving_location_id ? `<div class="panel empty">This warehouse has no receiving bay. A manager can set one up in the office screen (Warehouses, Receiving bay).</div>`
+    : (data || []).length ? (data || []).map((r, i) => `<button class="pick" data-pa="${i}"><b>${esc(r.item_name)}</b><div class="sub">${fmt(r.qty)} ${esc(r.uom)}${r.batch_no ? ', batch ' + esc(r.batch_no) : ''}${r.suggested_bin ? ` → <b>${esc(r.suggested_bin)}</b>` : ''}</div></button>`).join('')
+    : `<div class="panel empty">Nothing waiting in the receiving bay.</div>`;
+  document.querySelectorAll('[data-pa]').forEach(b => b.onclick = async () => {
+    const r = data[+b.dataset.pa];
+    const {data:opts} = await S.sb.rpc('putaway_options', {p_item:r.item_id, p_wh:S.wh, p_qty:r.qty});
+    openMove({title:'Put away', item_id:r.item_id, from:wh.receiving_location_id, to:(opts && opts[0] || {}).location_id || '', qty:num(r.qty), max:num(r.qty),
+              options:opts || [], back:viewPutaway});
+  });
+}
+async function viewRefills(){
+  S.view = 'refills'; setBar('Refill bins', {back:true}); showDock(false);
+  $('#main').innerHTML = `<div class="panel empty">Loading…</div>`;
+  const {data, error} = await S.sb.from('v_bin_refills').select('*').eq('warehouse_id', S.wh).order('to_bin');
+  if (error) return toast(error.message, 'err');
+  $('#main').innerHTML = (data || []).length ? data.map((r, i) => `<button class="pick" data-rf="${i}"><b>${esc(r.item_name)}</b>
+      <div class="sub">${esc(r.to_bin)} has ${fmt(r.bin_qty)} (min ${fmt(r.min_qty)}). ${r.from_bin ? `Take ${fmt(Math.min(num(r.refill_qty), num(r.from_qty)))} from <b>${esc(r.from_bin)}</b>.` : 'No stock in other bins.'}</div></button>`).join('')
+    : `<div class="panel empty">All home bins are above their minimum.</div>`;
+  document.querySelectorAll('[data-rf]').forEach(b => b.onclick = () => {
+    const r = data[+b.dataset.rf];
+    if (!r.from_location_id) return toast('There is no stock of this item in other bins.', 'err');
+    const q = Math.min(num(r.refill_qty), num(r.from_qty));
+    openMove({title:'Refill ' + r.to_bin, item_id:r.item_id, from:r.from_location_id, to:r.to_location_id, qty:q, max:num(r.from_qty), options:[], back:viewRefills});
+  });
+}
+function openMove(m){ S.view = 'move'; S.move = m; renderMove(); }
+function renderMove(){
+  const m = S.move, it = S.m.byId[m.item_id] || {};
+  setBar(m.title, {back:true}); showDock(true, false);
+  $('#main').innerHTML = `<div class="panel">
+      <div style="font-weight:600;font-size:18px">${esc(it.name)}</div><p class="hint">${esc(it.sku)}. From ${esc(binCode(m.from))}.</p>
+      ${m.options.length ? `<label>Suggested bins</label>${m.options.map(o => `<button class="pick" data-opt="${o.location_id}" style="${o.location_id === m.to ? 'border-color:var(--ink);border-width:3px' : ''}">
+          <b>${esc(o.bin)}</b><div class="sub">${esc(o.reason)}${num(o.bin_qty) ? `, holds ${fmt(o.bin_qty)}` : ''}${o.room !== null && o.room !== undefined ? `, room for ${fmt(o.room)}` : ''}</div></button>`).join('')}` : ''}
+      <label for="mvTo">Into bin (or scan the bin label)</label>
+      <select id="mvTo"><option value="">Choose</option>${binsOf(S.wh).filter(l => l.id !== m.from).map(l => `<option value="${l.id}" ${l.id === m.to ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select>
+      <label for="mvQ">Quantity</label><input id="mvQ" inputmode="decimal" value="${m.qty}">
+      <button class="btn primary" id="mvGo" style="margin-top:14px">Move</button></div>`;
+  document.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => { m.to = b.dataset.opt; renderMove(); });
+  $('#mvTo').onchange = e => { m.to = e.target.value; };
+  $('#mvQ').onchange = e => { m.qty = num(e.target.value); };
+  $('#mvGo').onclick = async () => {
+    m.qty = num($('#mvQ').value);
+    if (!m.to) return toast('Choose the bin.', 'err');
+    if (m.qty <= 0 || m.qty > m.max) return toast(`Enter a quantity up to ${fmt(m.max)}.`, 'err');
+    let serials = null;
+    if (it.track_serial){
+      if (m.qty !== Math.trunc(m.qty)) return toast('Serial items move in whole units.', 'err');
+      const {data} = await S.sb.from('item_serials').select('serial_no').eq('item_id', m.item_id).eq('location_id', m.from).eq('status', 'in_stock').order('serial_no').limit(m.qty);
+      if ((data || []).length < m.qty) return toast('Not enough serial numbers recorded in that bin.', 'err');
+      serials = {1:data.map(x => x.serial_no)};
+    }
+    $('#mvGo').disabled = true;
+    try{
+      const res = await sendPayload({tenant:S.tenant, header:{tenant_id:S.tenant, doc_type:'transfer', doc_date:today(), warehouse_id:S.wh, to_warehouse_id:S.wh,
+        reason:m.title}, lines:[{line_no:1, item_id:m.item_id, location_id:m.from, to_location_id:m.to, qty:m.qty}], serials, post:true});
+      toast(`Moved to ${binCode(m.to)} (${res.no}).`, 'ok'); m.back();
+    }catch(e){ toast(e.message, 'err'); $('#mvGo').disabled = false; }
+  };
+}
+
+/* ---------- Pick and pack ---------- */
+const PICK_STAGE = {open:'To pick', picked:'To pack', packed:'Ready to bill'};
+async function viewPickLists(){
+  S.view = 'picklists'; S.pick = null; setBar('Pick and pack', {back:true}); showDock(false);
+  $('#main').innerHTML = `<div class="panel empty">Loading orders…</div>`;
+  const [pl, so] = await Promise.all([
+    S.sb.from('v_pick_lists').select('id,pick_no,status,order_no,customer,warehouse,qty_to_pick,qty_picked,qty_packed,lines_not_in_stock')
+      .eq('tenant_id', S.tenant).in('status', ['open','picked','packed']).order('created_at'),
+    S.sb.from('v_orders').select('id,order_no,party,pending_qty,warehouse,expected_date').eq('tenant_id', S.tenant)
+      .eq('order_type', 'sales').eq('status', 'confirmed').gt('pending_qty', 0).order('order_date')
+  ]);
+  if (pl.error || so.error) return toast((pl.error || so.error).message, 'err');
+  const wn = whName(S.wh), lists = pl.data.filter(x => x.warehouse === wn);
+  const busy = new Set(lists.map(x => x.order_no));
+  const orders = so.data.filter(o => o.warehouse === wn && !busy.has(o.order_no));
+  $('#main').innerHTML = `
+    ${lists.length ? `<div class="panel">${lists.map(x => `<button class="tile" style="width:100%;margin:0 0 8px" data-pk="${x.id}">
+        <b>${esc(x.pick_no)}, ${esc(PICK_STAGE[x.status])}</b><span>${esc(x.order_no)} for ${esc(x.customer || 'walk-in')}. Picked ${fmt(x.qty_picked)} of ${fmt(x.qty_to_pick)}${x.lines_not_in_stock ? `, ${x.lines_not_in_stock} line(s) not in stock` : ''}</span></button>`).join('')}</div>` : ''}
+    <div class="panel"><div style="font-weight:600;margin-bottom:6px">Orders waiting to be picked</div>
+      ${orders.length ? orders.map(o => `<div class="line"><div><div class="nm">${esc(o.order_no)}</div><div class="sub">${esc(o.party || 'Walk-in')}, ${fmt(o.pending_qty)} units${o.expected_date ? ', due ' + esc(o.expected_date) : ''}</div></div>
+          <button class="btn primary" style="width:auto;padding:0 14px;min-height:40px;font-size:16px" data-startpick="${o.id}">Start picking</button></div>`).join('')
+        : `<div class="empty">No confirmed sales orders are waiting in ${esc(wn)}.</div>`}</div>`;
+  document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => openPick(b.dataset.pk));
+  document.querySelectorAll('[data-startpick]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try{
+      const no = await nextDocNo(null, 'PK-', 'pick_lists', 'pick_no');
+      const {data, error} = await S.sb.rpc('create_pick_list', {p_order:b.dataset.startpick, p_pick_no:no});
+      if (error) throw error;
+      openPick(data);
+    }catch(e){ toast(e.message, 'err'); b.disabled = false; }
+  });
+}
+async function openPick(id){
+  const {data:h, error} = await S.sb.from('pick_lists').select('id,pick_no,status').eq('id', id).single();
+  if (error) return toast(error.message, 'err');
+  S.pick = {...h, lines:[]}; S.view = 'pick'; S.bin = null;
+  await loadPickLines(); renderPick();
+}
+async function loadPickLines(){
+  const {data, error} = await S.sb.from('v_pick_lines').select('*').eq('pick_list_id', S.pick.id).order('bin').order('line_no');
+  if (error) return toast(error.message, 'err');
+  S.pick.lines = data;
+}
+function renderPick(){
+  const p = S.pick, stage = p.status;
+  setBar(p.pick_no + ', ' + PICK_STAGE[stage], {back:true}); showDock(stage !== 'packed', false);
+  const done = l => stage === 'open' ? num(l.qty_picked) >= num(l.qty_to_pick) : num(l.qty_packed) >= num(l.qty_picked);
+  $('#main').innerHTML = `
+    <div class="binchip"><div><small>${stage === 'open' ? 'Picking from' : 'Packing'}</small><br><strong>${esc(stage === 'open' ? (S.bin ? binCode(S.bin) : 'Scan a bin') : 'Scan each item')}</strong></div></div>
+    <div class="panel">${p.lines.map(l => `<div class="line" style="${done(l) ? 'opacity:.55' : ''}">
+        <div><div class="nm">${esc(l.item_name)}</div><div class="sub">${esc(l.sku)}, bin ${esc(l.bin)}${l.batch_no ? ', batch ' + esc(l.batch_no) : ''}${l.expiry_date ? ', exp ' + esc(l.expiry_date) : ''}</div></div>
+        <div style="text-align:right"><div class="big" style="font-size:30px">${fmt(stage === 'open' ? l.qty_picked : l.qty_packed)}<span style="font-size:18px;color:var(--muted)"> / ${fmt(stage === 'open' ? l.qty_to_pick : l.qty_picked)}</span></div></div>
+      </div>`).join('')}</div>
+    ${stage === 'open' ? `<button class="btn primary" id="pkDone">Finish picking</button>` : ''}
+    ${stage === 'picked' ? `<button class="btn primary" id="pkPack">Finish packing</button><br><button class="btn ghost" id="pkBill">Bill without packing check</button>` : ''}
+    ${stage === 'packed' ? `<button class="btn go" id="pkBill">Make invoice and post</button>` : ''}`;
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  on('#pkDone', async () => {
+    const short = p.lines.reduce((a, l) => a + num(l.qty_to_pick) - num(l.qty_picked), 0);
+    if (short > 0 && !confirm(`${fmt(short)} unit(s) are not picked. They stay pending on the order. Finish anyway?`)) return;
+    const {error} = await S.sb.rpc('finish_picking', {p_pick:p.id}); if (error) return toast(error.message, 'err');
+    p.status = 'picked'; toast('Picking finished. Now scan each item while packing.', 'ok'); renderPick();
+  });
+  on('#pkPack', async () => {
+    const {error} = await S.sb.rpc('finish_packing', {p_pick:p.id}); if (error){ beep(false); return toast(error.message, 'err'); }
+    p.status = 'packed'; toast('Packing matches picking.', 'ok'); renderPick();
+  });
+  on('#pkBill', async () => {
+    const b = $('#pkBill'); b.disabled = true;
+    try{
+      const no = draftNo();
+      const {data:docId, error} = await S.sb.rpc('create_invoice_from_pick', {p_pick:p.id, p_doc_no:no});
+      if (error) throw error;
+      await postWithPrompts(docId, no);
+      const fin = await finalNo(docId);
+      toast(`${fin} posted.`, 'ok'); viewPickLists();
+      if (window.WMSPrint && confirm(`${fin} posted. Print or share it now?`)) WMSPrint.doc(S.sb, docId).catch(e => toast(e.message, 'err'));
+    }catch(e){ toast(e.message, 'err'); if (e.saved) viewPickLists(); else b.disabled = false; }
+  });
+}
+async function pickScan(item, qty){
+  const p = S.pick, stage = p.status === 'open' ? 'pick' : 'pack';
+  if (p.status === 'packed') return;
+  const {error} = await S.sb.rpc('pick_scan', {p_pick:p.id, p_item:item.id, p_location:stage === 'pick' ? S.bin : null, p_qty:qty, p_stage:stage});
+  if (error){ beep(false); return toast(`${item.sku}: ${error.message}`, 'err'); }
+  await loadPickLines(); renderPick();
+}
+
+/* ---------- Stock count ---------- */
+async function viewCounts(){
+  S.view = 'counts'; S.count = null; setBar('Count stock', {back:true}); showDock(false);
+  const {data, error} = await S.sb.from('v_counts').select('id,count_no,status,warehouse,scope,counted_lines,started_at').eq('tenant_id', S.tenant)
+    .eq('status', 'counting').order('started_at');
+  if (error) return toast(error.message, 'err');
+  const wn = whName(S.wh), list = data.filter(c => c.warehouse === wn);
+  const bins = binsOf(S.wh);
+  $('#main').innerHTML = `
+    ${list.length ? `<div class="panel">${list.map(c => `<button class="tile" style="width:100%;margin:0 0 8px" data-cnt="${c.id}">
+        <b>${esc(c.count_no)}</b><span>${esc(c.scope)}, ${c.counted_lines} item(s) counted so far</span></button>`).join('')}</div>` : ''}
+    <div class="panel"><div style="font-weight:600">Start a new count in ${esc(wn)}</div>
+      <label for="cscope">What to count</label>
+      <select id="cscope"><option value="">Whole warehouse</option>${bins.map(l => `<option value="${l.id}" ${l.id === S.bin ? 'selected' : ''}>Only bin ${esc(l.full_code)}</option>`).join('')}</select>
+      <p class="hint">Counters do not see the book quantity. A manager approves the differences from the office.</p><br>
+      <button class="btn primary" id="cstart">Start count</button></div>`;
+  document.querySelectorAll('[data-cnt]').forEach(b => b.onclick = () => openCount(list.find(c => c.id === b.dataset.cnt)));
+  $('#cstart').onclick = async () => {
+    try{
+      const no = await nextDocNo(null, 'CNT-', 'stock_counts', 'count_no');
+      const loc = $('#cscope').value || null;
+      const {data:id, error:e2} = await S.sb.rpc('start_count', {p_wh:S.wh, p_count_no:no, p_location:loc, p_blind:true});
+      if (e2) throw e2;
+      openCount({id, count_no:no, scope:loc ? binCode(loc) : 'Whole warehouse'});
+    }catch(e){ toast(e.message, 'err'); }
+  };
+}
+async function openCount(c){
+  S.count = {...c, lines:[]}; S.view = 'count';
+  const fixed = S.m.locs.find(l => l.full_code === c.scope && l.warehouse_id === S.wh);
+  S.bin = fixed ? fixed.id : null; S.count.fixedBin = !!fixed;
+  await loadCountLines(); renderCount();
+}
+async function loadCountLines(){
+  const {data} = await S.sb.from('v_count_lines').select('item_id,sku,item_name,bin,location_id,counted_qty,counted_at')
+    .eq('count_id', S.count.id).not('counted_qty', 'is', null).order('counted_at', {ascending:false});
+  S.count.lines = data || [];
+}
+function renderCount(){
+  const c = S.count;
+  setBar(c.count_no, {back:true}); showDock(true, false);
+  $('#main').innerHTML = `
+    <div class="binchip"><div><small>Counting in</small><br><strong>${esc(S.bin ? binCode(S.bin) : 'Scan a bin label')}</strong></div>${c.fixedBin ? '' : '<small>Scan another bin to move on</small>'}</div>
+    <div class="panel">${c.lines.length ? c.lines.map(l => `<div class="line">
+        <div><div class="nm">${esc(l.item_name)}</div><div class="sub">${esc(l.sku)}, bin ${esc(l.bin)}</div></div>
+        <div style="text-align:right"><div class="big" style="font-size:30px">${fmt(l.counted_qty)}</div>
+        <button class="del" style="color:var(--ink)" data-fix="${esc(l.item_id)}|${esc(l.location_id || '')}">Correct</button></div></div>`).join('')
+      : `<div class="empty">Scan a bin, then scan every item in it. Each scan adds one pack.</div>`}</div>
+    <button class="btn primary" id="csubmit">Submit count</button>
+    <p class="hint">Items you did not scan stay as "not counted" and are not adjusted.</p>`;
+  document.querySelectorAll('[data-fix]').forEach(b => b.onclick = async () => {
+    const [item, loc] = b.dataset.fix.split('|');
+    const v = prompt('Correct counted quantity'); if (v === null || v.trim() === '' || !isFinite(+v)) return;
+    const {error} = await S.sb.rpc('count_add', {p_count:c.id, p_item:item, p_location:loc || null, p_qty:num(v), p_set:true});
+    if (error) return toast(error.message, 'err');
+    await loadCountLines(); renderCount();
+  });
+  $('#csubmit').onclick = async () => {
+    if (!confirm('Submit this count? Counting will close and a manager will review the differences.')) return;
+    const {error} = await S.sb.rpc('submit_count', {p_count:c.id, p_uncounted_as_zero:false});
+    if (error) return toast(error.message, 'err');
+    toast(`${c.count_no} submitted for approval.`, 'ok'); viewCounts();
+  };
+}
+async function countScan(item, qty){
+  if (!S.bin && binsOf(S.wh).length){ beep(false); return toast('Scan the bin label first.', 'err'); }
+  const {data, error} = await S.sb.rpc('count_add', {p_count:S.count.id, p_item:item.id, p_location:S.bin, p_qty:qty, p_set:false});
+  if (error){ beep(false); return toast(error.message, 'err'); }
+  toast(`${item.sku}: ${fmt(data)} counted`);
+  await loadCountLines(); renderCount();
+}
+
+/* ---------- Wiring ---------- */
+$('#scanInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); onScan(e.target.value); e.target.value = ''; }
+});
+$('#camBtn').onclick = openCamera;
+$('#camClose').onclick = closeCamera;
+$('#postBtn').onclick = () => submitDoc(true);
+$('#saveDraftBtn').onclick = () => submitDoc(false);
+$('#backBtn').onclick = () => {
+  if (S.view === 'doc' && S.doc?.lines.length && !confirm('Leave without saving these items?')) return;
+  closeCamera();
+  if (S.view === 'pick') return viewPickLists();
+  if (S.view === 'count') return viewCounts();
+  viewHome();
+};
+window.addEventListener('online', flushOutbox);
+boot();
+</script>
+</body>
+</html>
