@@ -30,8 +30,10 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--ink);outline-offset:1px}
 .hidden{display:none!important}
 
-.app{display:grid;grid-template-columns:240px 1fr;height:100%}
-nav{background:var(--ink);color:#fff;overflow:auto;padding:16px 0 24px}
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:100vh;height:100dvh;overflow:hidden}
+nav{background:var(--ink);color:#fff;overflow:auto;overscroll-behavior:contain;padding:16px 0 24px;min-height:0}
+nav .navtop{display:flex;align-items:center;gap:10px}
+nav .menubtn{display:none;margin-left:auto;margin-right:14px;background:#24345A;color:#fff;border:1px solid #3C4E78;border-radius:6px;height:34px;padding:0 12px;font:600 14px/1 var(--sans)}
 nav .brand{font:700 22px/1 var(--cond);padding:0 18px 4px}
 nav .co{padding:0 18px 14px;color:#C9D3EA;font-size:13px;border-bottom:1px solid #2E3F66;margin-bottom:8px}
 nav .co button{background:none;border:0;color:#C9D3EA;text-decoration:underline;padding:0;font-size:13px}
@@ -57,7 +59,7 @@ nav a{display:block;padding:7px 18px 7px 34px;color:#E7ECF7;text-decoration:none
 nav a:hover{background:var(--ink2)}
 nav a.on{background:var(--ink2);border-left-color:var(--hivis);color:#fff;font-weight:600}
 
-main{overflow:auto;display:flex;flex-direction:column;min-width:0}
+main{overflow:auto;display:flex;flex-direction:column;min-width:0;min-height:0}
 .head{padding:18px 22px 10px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
 .head h1{font:700 30px/1 var(--cond);margin:0;flex:1;min-width:220px}
 .head p{margin:6px 0 0;color:var(--muted);font-size:14px;flex-basis:100%}
@@ -99,25 +101,26 @@ td.neg{color:var(--stop)}
 .empty{padding:40px 16px;text-align:center;color:var(--muted)}
 
 /* filter panel */
-.colpop{position:fixed;z-index:60;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(22,33,58,.2);font-size:14px}
-.cp-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.colpop{position:fixed;z-index:60;width:252px;max-width:calc(100vw - 24px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(22,33,58,.2);font-size:14px}
+.cp-head{display:flex;justify-content:space-between;align-items:center;padding:9px 12px 7px;border-bottom:1px solid var(--line)}
+.cp-head b{font-size:13px}
 .cp-head button{background:none;border:0;font-size:14px}
-.cp-body{padding:10px 12px;max-height:360px;overflow:auto}
-.cp-body input[type=text],.cp-body input[type=search],.cp-body input[type=date],.cp-body select{width:100%;height:32px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
-.cp-row{display:flex;gap:6px}.cp-row select{flex:0 0 120px}
+.cp-body{padding:8px 12px 10px;max-height:300px;overflow:auto}
+.cp-body input[type=text],.cp-body input[type=search],.cp-body input[type=date],.cp-body select{width:100%;height:29px;font-size:13.5px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
+.cp-row{display:flex;gap:6px;align-items:center}.cp-row select{flex:0 0 96px;width:96px}.cp-row input{flex:1 1 auto;min-width:0}
 .cp-range{display:flex;gap:8px}.cp-range label{flex:1;font-size:12.5px;color:var(--muted)}
-.cp-sub{margin:10px 0 6px;color:var(--muted);font-size:12.5px}
-.cp-list{margin-top:6px;max-height:220px;overflow:auto;border:1px solid #EEECE6;border-radius:6px}
-.cp-item{display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer}
+.cp-sub{margin:8px 0 5px;color:var(--muted);font-size:12.5px}
+.cp-list{margin-top:6px;max-height:150px;overflow:auto;border:1px solid #EEECE6;border-radius:6px}
+.cp-item{display:flex;align-items:center;gap:8px;padding:4px 8px;cursor:pointer}
 .cp-item:hover{background:var(--zebra)}
 .cp-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cp-item small{color:var(--muted)}
 .cp-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .cp-chip{border:1px solid var(--line);background:#fff;border-radius:14px;padding:3px 10px;font-size:13px}
 .cp-chip:hover{border-color:var(--ink)}
-.cp-foot{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.cp-foot{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
 .cp-foot span{flex:1}
-.cp-auto{display:flex;align-items:center;gap:6px;padding:0 12px 10px;font-size:13px;color:var(--muted)}
+.cp-auto{display:flex;align-items:center;gap:6px;padding:0 12px 9px;font-size:13px;color:var(--muted)}
 .note{color:var(--muted);font-size:13px}
 
 /* setup */
@@ -165,8 +168,13 @@ td.neg{color:var(--stop)}
   .roll .lbl{width:50mm;height:25mm;padding:1mm;page-break-after:always}
 }
 @media (max-width:820px){
-  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  nav{max-height:38vh}
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  nav{padding:10px 0;overflow:visible;position:relative;z-index:30}
+  nav .brand{padding-bottom:0}
+  nav .menubtn{display:block}
+  nav .navbody{display:none}
+  .app.menu-open nav .navbody{display:block;position:absolute;left:0;right:0;top:100%;max-height:calc(100dvh - 64px);overflow:auto;overscroll-behavior:contain;
+    background:var(--ink);padding:8px 0 16px;box-shadow:0 18px 30px rgba(10,18,40,.35)}
   .head{padding:14px}.tablewrap{margin:0 10px 14px}.chipbar{padding:0 14px 10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -725,6 +733,7 @@ async function openReport(rep){
   if (rep.params === 'fy'){ const [a, b] = fyRange(0); S.params = {from:a, to:b}; }
   else if (rep.params === 'period' || rep.range){ S.params = {from:fyRange(0)[0], to:isoToday()}; }
   location.hash = rep.id; rememberTab(rep.id);
+  const mn = document.querySelector('main'); if (mn) mn.scrollTop = 0;
   await load();
 }
 async function load(){
@@ -914,9 +923,19 @@ function placePop(){
   const btn = document.querySelector(`.colf[data-colf="${S.pop.k}"]`);
   if (!btn){ pop.style.left = '50%'; pop.style.top = '120px'; pop.style.transform = 'translateX(-50%)'; }
   else {
-    const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
-    let left = Math.min(window.innerWidth - w - 12, Math.max(12, r.left - 12)), top = r.bottom + 6;
-    if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 6);
+    pop.style.transform = '';
+    const cellEl = btn.closest('th') || btn, cellR = cellEl.getBoundingClientRect();
+    const body = pop.querySelector('.cp-body'), head = pop.querySelector('.cp-head'), foot = pop.querySelector('.cp-foot'), auto = pop.querySelector('.cp-auto');
+    const chrome = (head ? head.offsetHeight : 0) + (foot ? foot.offsetHeight : 0) + (auto ? auto.offsetHeight : 0) + 8;
+    const below = window.innerHeight - cellR.bottom - 20, above = cellR.top - 20;
+    const down = below >= 260 || below >= above;                  // downwards when there is room, as a spreadsheet does
+    if (body) body.style.maxHeight = Math.max(150, Math.min(360, (down ? below : above) - chrome)) + 'px';
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    // under the column, aligned to its left edge; to its right edge when that would run off the screen
+    let left = cellR.left;
+    if (left + w > window.innerWidth - 12) left = Math.max(12, cellR.right - w);
+    left = Math.max(12, Math.min(left, window.innerWidth - w - 12));
+    const top = down ? Math.min(cellR.bottom + 4, window.innerHeight - h - 12) : Math.max(12, cellR.top - h - 4);
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   }
   const lst = pop.querySelector('.cp-list'); if (lst && S.pop.scroll) lst.scrollTop = S.pop.scroll;
@@ -1061,12 +1080,13 @@ function render(){
       <label>${rep.params === 'fy' ? 'Year from' : 'From'}<input type="date" data-param="from" value="${esc(S.params.from)}"></label>
       <label>To<input type="date" data-param="to" value="${esc(S.params.to)}"></label>` : '';
 
-  $('#root').innerHTML = `<div class="app">
-    <nav aria-label="Reports"><div class="brand">Warehouse Office</div>
-      <div class="co">${esc(t.name || '')}${S.tenants.length > 1 ? `<br><select id="coSel" style="margin-top:6px;width:100%;background:#24345A;color:#fff;border:1px solid #3C4E78;border-radius:6px;height:30px">${S.tenants.map(x => `<option value="${x.id}" ${x.id === S.tenant ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}
+  $('#root').innerHTML = `<div class="app${S.menuOpen ? ' menu-open' : ''}">
+    <nav aria-label="Reports"><div class="navtop"><div class="brand">Warehouse Office</div>
+        <button class="menubtn" id="menubtn" aria-expanded="${!!S.menuOpen}" aria-controls="navbody">${S.menuOpen ? 'Close' : 'Menu'}</button></div>
+      <div class="navbody" id="navbody"><div class="co">${esc(t.name || '')}${S.tenants.length > 1 ? `<br><select id="coSel" style="margin-top:6px;width:100%;background:#24345A;color:#fff;border:1px solid #3C4E78;border-radius:6px;height:30px">${S.tenants.map(x => `<option value="${x.id}" ${x.id === S.tenant ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}
         <br>${esc(S.user?.email)} <button id="so">Sign out</button></div>
       <input type="search" class="navq" id="navq" placeholder="Find a screen…" aria-label="Find a screen" value="${esc(S.navq || '')}">
-      <div id="navlist">${navHtml(rep)}</div>
+      <div id="navlist">${navHtml(rep)}</div></div>
     </nav>
     <main>
       <div class="head"><h1>${esc((navItemOf(rep.id) || {}).tabs?.length > 1 ? navItemOf(rep.id).t : rep.title)}</h1>
@@ -2094,7 +2114,8 @@ function exportXls(){
 document.addEventListener('click', e => {
   const t = e.target;
   const ng = t.closest('[data-grp]'); if (ng){ toggleNavGroup(ng.dataset.grp); return; }
-  const a = t.closest('[data-rep]'); if (a){ e.preventDefault(); if (a.closest('nav')) S.navq = ''; openReport(REPORTS.find(r => r.id === a.dataset.rep)); return; }
+  if (t.closest('#menubtn')){ S.menuOpen = !S.menuOpen; render(); if (S.menuOpen) { const q = $('#navq'); if (q && matchMedia('(min-width:821px)').matches) q.focus(); } return; }
+  const a = t.closest('[data-rep]'); if (a){ e.preventDefault(); if (a.closest('nav')){ S.navq = ''; S.menuOpen = false; } openReport(REPORTS.find(r => r.id === a.dataset.rep)); return; }
   const ac = t.closest('[data-act]');
   if (ac){ const [ri, ai] = ac.dataset.act.split('|').map(Number); const act = S.rep.actions(S.page[ri])[ai]; if (act) act.fn(); return; }
   const tl = t.closest('[data-tool]'); if (tl){ S.rep.tools[+tl.dataset.tool].fn(); return; }
@@ -2122,7 +2143,7 @@ document.addEventListener('click', e => {
   if (qk){
     const [a1, b1] = quickRange(qk.dataset.cpquick), pop = $('#colpop');
     pop.querySelector('[data-pf="from"]').value = a1; pop.querySelector('[data-pf="to"]').value = b1;
-    if (S.auto) applyPop(false); else { readPop(); render(); }
+    applyPop(true);   // a quick pick is a whole choice: apply and close
     return;
   }
   const dc = t.closest('[data-go]'); if (dc && S.rep && S.rep.custom){ openReport(REPORTS.find(r => r.id === dc.dataset.go)); return; }
@@ -2130,6 +2151,7 @@ document.addEventListener('click', e => {
   if (t.id === 'xls'){ exportXls(); return; }
   if (t.id === 'reload'){ load(); return; }
   if (t.id === 'so'){ signOut(); return; }
+  if (S.menuOpen && !t.closest('nav')){ S.menuOpen = false; render(); return; }
   if (S.pop && !t.closest('#colpop')){ S.pop = null; render(); }
 });
 document.addEventListener('change', e => {
@@ -2165,6 +2187,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.target.id === 'navq' && e.key === 'Enter'){ const a = $('#navlist a'); if (a) a.click(); }
+  if (e.key === 'Escape' && S.menuOpen && e.target.id !== 'navq'){ S.menuOpen = false; render(); }
   if (e.target.id === 'navq' && e.key === 'Escape'){ e.target.value = ''; S.navq = ''; $('#navlist').innerHTML = navHtml(S.rep); }
 });
 window.addEventListener('resize', placePop);
