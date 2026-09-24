@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Warehouse Office</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="wms-print.js"></script>
+<script src="wms-tally.js"></script>
+<style>
+:root{
+  --concrete:#E4E2DC; --panel:#FFFFFF; --ink:#16213A; --ink2:#24345A; --muted:#5C6474;
+  --line:#D3D0C7; --zebra:#F7F6F2; --hivis:#FFC400; --hivis-soft:#FFF1BF;
+  --stop:#C62828; --go:#1E7B4F;
+  --sans:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--concrete);color:var(--ink);font:15px/1.4 var(--sans)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:1px}
+.hidden{display:none!important}
+
+.app{display:grid;grid-template-columns:240px 1fr;height:100%}
+nav{background:var(--ink);color:#fff;overflow:auto;padding:16px 0 24px}
+nav .brand{font:700 22px/1 var(--cond);padding:0 18px 4px}
+nav .co{padding:0 18px 14px;color:#C9D3EA;font-size:13px;border-bottom:1px solid #2E3F66;margin-bottom:8px}
+nav .co button{background:none;border:0;color:#C9D3EA;text-decoration:underline;padding:0;font-size:13px}
+nav h2{font:600 13px/1 var(--sans);color:#8E9BBB;margin:16px 18px 6px;letter-spacing:.2px}
+nav .navq{margin:4px 14px 8px;width:calc(100% - 28px);height:32px;background:#24345A;color:#fff;border:1px solid #3C4E78;border-radius:6px;padding:0 10px;font-size:14px}
+nav .navq::placeholder{color:#8E9BBB}
+nav .ng{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;color:#C9D3EA;font:600 13px/1 var(--sans);letter-spacing:.3px;text-transform:uppercase;padding:11px 18px 9px;text-align:left;cursor:pointer}
+nav .ng:hover{color:#fff;background:#1d2b4d}
+nav .ng .cnt{margin-left:auto;background:#2E3F66;border-radius:9px;padding:2px 7px;font-size:11px;color:#C9D3EA}
+nav .ng .chev{width:10px;transition:transform .15s}
+nav .ng[aria-expanded="true"] .chev{transform:rotate(90deg)}
+nav .ng.has-on{color:#fff}
+nav .grp{padding-bottom:4px}
+nav .grp[hidden]{display:none}
+nav .nonav{padding:10px 18px;color:#8E9BBB;font-size:13px}
+nav a .sub{color:#8E9BBB;font-weight:400}
+.tabs{flex-basis:100%;order:2;display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line,#D9DEE8);margin-top:4px;scrollbar-width:thin}
+.tabs a{padding:9px 14px 8px;white-space:nowrap;color:#4A5570;text-decoration:none;border-bottom:3px solid transparent;font-weight:500;font-size:14px}
+.tabs a:hover{color:var(--ink);background:#F2F4F8}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:700}
+.head .tools{order:1}.head>p{order:4;flex-basis:100%}
+nav a{display:block;padding:7px 18px 7px 34px;color:#E7ECF7;text-decoration:none;border-left:4px solid transparent;font-size:14px}
+nav a:hover{background:var(--ink2)}
+nav a.on{background:var(--ink2);border-left-color:var(--hivis);color:#fff;font-weight:600}
+
+main{overflow:auto;display:flex;flex-direction:column;min-width:0}
+.head{padding:18px 22px 10px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.head h1{font:700 30px/1 var(--cond);margin:0;flex:1;min-width:220px}
+.head p{margin:6px 0 0;color:var(--muted);font-size:14px;flex-basis:100%}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tools label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.tools input{height:34px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
+.btn{height:34px;border:1px solid var(--ink);background:#fff;border-radius:6px;padding:0 12px;font-weight:600}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.small{height:30px;padding:0 10px;font-size:13.5px}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;font-size:13.5px}
+
+.chipbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 22px 10px}
+.chipbar .count{color:var(--muted);font-size:13.5px;margin-right:4px}
+.fchip{display:inline-flex;align-items:center;background:var(--hivis-soft);border:1px solid #E8C65A;border-radius:14px;overflow:hidden}
+.fchip-l{border:0;background:none;padding:4px 4px 4px 10px;font-size:13px}
+.fchip-x{border:0;background:none;padding:4px 9px 4px 4px;font-size:12px}
+.fchip-x:hover{color:var(--stop)}
+
+.tablewrap{margin:0 22px 22px;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:auto;flex:1;min-height:200px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:14px}
+thead th{position:sticky;top:0;z-index:2;background:#EFEDE7;border-bottom:1px solid var(--line);text-align:left;font-weight:600;padding:0;white-space:nowrap}
+th.n,td.n{text-align:right}
+.colh{display:flex;align-items:center;gap:4px;padding:8px 8px}
+th.n .colh{justify-content:flex-end}
+.sortbtn{background:none;border:0;padding:0;font-weight:600;text-align:inherit}
+.sortbtn .arrow{color:var(--muted);font-size:11px;margin-left:2px}
+.colf{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:5px;background:none;color:#9098A8;padding:0}
+.colf:hover{border-color:var(--line);color:var(--ink);background:#fff}
+.colf.on{background:var(--hivis);color:var(--ink);border-color:#D9A600}
+.colf.open{outline:2px solid var(--ink)}
+tbody td{padding:7px 8px;border-bottom:1px solid #EEECE6;white-space:nowrap;font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even) td{background:var(--zebra)}
+tbody tr:hover td{background:#FFF8DC}
+tfoot td{position:sticky;bottom:0;background:#EFEDE7;border-top:2px solid var(--ink);padding:8px;font-weight:600;white-space:nowrap}
+td.neg{color:var(--stop)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12.5px;background:#E9ECF3}
+.tag.bad{background:#FBE3E3;color:#8E1B1B}.tag.warn{background:var(--hivis-soft)}.tag.good{background:#DDF1E6;color:#16603C}
+.more{padding:12px;text-align:center}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+/* filter panel */
+.colpop{position:fixed;z-index:60;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(22,33,58,.2);font-size:14px}
+.cp-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.cp-head button{background:none;border:0;font-size:14px}
+.cp-body{padding:10px 12px;max-height:360px;overflow:auto}
+.cp-body input[type=text],.cp-body input[type=search],.cp-body input[type=date],.cp-body select{width:100%;height:32px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
+.cp-row{display:flex;gap:6px}.cp-row select{flex:0 0 120px}
+.cp-range{display:flex;gap:8px}.cp-range label{flex:1;font-size:12.5px;color:var(--muted)}
+.cp-sub{margin:10px 0 6px;color:var(--muted);font-size:12.5px}
+.cp-list{margin-top:6px;max-height:220px;overflow:auto;border:1px solid #EEECE6;border-radius:6px}
+.cp-item{display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer}
+.cp-item:hover{background:var(--zebra)}
+.cp-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-item small{color:var(--muted)}
+.cp-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cp-chip{border:1px solid var(--line);background:#fff;border-radius:14px;padding:3px 10px;font-size:13px}
+.cp-chip:hover{border-color:var(--ink)}
+.cp-foot{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.cp-foot span{flex:1}
+.cp-auto{display:flex;align-items:center;gap:6px;padding:0 12px 10px;font-size:13px;color:var(--muted)}
+.note{color:var(--muted);font-size:13px}
+
+/* setup */
+.card{max-width:420px;margin:10vh auto;background:#fff;border:1px solid var(--line);border-radius:8px;padding:22px}
+.card h1{font:700 28px/1 var(--cond);margin:0 0 12px}
+.card label{display:block;font-size:13.5px;color:var(--muted);margin:10px 0 4px}
+.card input{width:100%;height:40px;border:1px solid var(--line);border-radius:6px;padding:0 10px}
+.card .btn{width:100%;height:42px;margin-top:16px}
+.toast{position:fixed;right:18px;bottom:18px;z-index:80;max-width:420px;padding:12px 14px;border-radius:6px;background:var(--ink);color:#fff}
+.toast.err{background:var(--stop)}
+
+/* dashboard */
+.dash{padding:0 22px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card2{background:#fff;border:1px solid var(--line);border-left:6px solid var(--ink);border-radius:6px;padding:14px;text-align:left;cursor:pointer}
+.card2.warn{border-left-color:var(--hivis)}.card2.bad{border-left-color:var(--stop)}
+.card2 b{display:block;font:700 30px/1.05 var(--cond);margin:2px 0}
+.card2 span{font-size:13.5px;color:var(--muted)}
+.card2.wide{grid-column:1/-1;cursor:default}
+.dash h3{grid-column:1/-1;margin:10px 0 0;font:700 18px/1 var(--cond);color:var(--muted)}
+/* row actions, forms */
+.act{height:26px;border:1px solid var(--ink);background:#fff;border-radius:5px;padding:0 8px;font-size:12.5px;font-weight:600;margin-right:4px}
+.act.warn{border-color:var(--stop);color:var(--stop)}
+.modal-bg{position:fixed;inset:0;z-index:70;background:rgba(22,33,58,.45);display:flex;align-items:flex-start;justify-content:center;padding:6vh 12px;overflow:auto}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:560px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal.wide{max-width:880px}
+.modal h2{font:700 24px/1 var(--cond);margin:0;padding:16px 18px;border-bottom:1px solid var(--line)}
+.modal .mb{padding:14px 18px}
+.modal .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.modal label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+.modal input,.modal select,.modal textarea{width:100%;height:36px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
+.modal textarea{height:72px;padding:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.olines td{padding:4px}.olines input,.olines select{height:32px}
+#printArea{display:none}
+@media print{
+  body.lbl-printing>*:not(#printArea){display:none!important}
+  body.lbl-printing #printArea{display:block}
+  .lbl{box-sizing:border-box;overflow:hidden;page-break-inside:avoid;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:var(--sans);color:#000}
+  .lbl svg{max-width:100%}
+  .lbl .t1{font-weight:600;font-size:10pt;line-height:1.1;max-height:2.3em;overflow:hidden}
+  .lbl .t2{font-size:8pt}
+  .lbl.bin .t1{font:700 22pt/1 var(--cond)}
+  .sheet{display:grid;grid-template-columns:repeat(3,1fr)}
+  .sheet .lbl{height:33.9mm;padding:2mm;border:0}
+  .roll .lbl{width:50mm;height:25mm;padding:1mm;page-break-after:always}
+}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  nav{max-height:38vh}
+  .head{padding:14px}.tablewrap{margin:0 10px 14px}.chipbar{padding:0 14px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ======================================================================
+   Warehouse Office — reports with column filters.
+   Same Supabase project and login as the scanner app (wms-scanner.html).
+   Every column heading has a funnel: text (has / does not have + pick
+   values), numbers (from / to), dates (quick ranges + from / to),
+   yes/no. Filters show as chips above the table; export gives the
+   filtered rows in Excel.
+   ====================================================================== */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const isoToday = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const INR = new Intl.NumberFormat('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const QTY = new Intl.NumberFormat('en-IN', {maximumFractionDigits:3});
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = v => { if (!v) return ''; const s = String(v).slice(0,10).split('-'); return s.length === 3 ? `${s[2]} ${MON[+s[1]-1]} ${s[0]}` : v; };
+const fmtTime = v => v ? fmtDate(v) + ' ' + String(v).slice(11,16) : '';
+
+function fyRange(offset=0){
+  const d = new Date(), y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  return [`${y+offset}-04-01`, `${y+offset+1}-03-31`];
+}
+function quickRange(v){
+  const now = new Date(), iso = d => d.toISOString().slice(0,10), y = now.getFullYear(), m = now.getMonth(), qm = Math.floor(m/3)*3;
+  if (v === 'month')   return [iso(new Date(Date.UTC(y, m, 1))), iso(new Date(Date.UTC(y, m+1, 0)))];
+  if (v === 'last')    return [iso(new Date(Date.UTC(y, m-1, 1))), iso(new Date(Date.UTC(y, m, 0)))];
+  if (v === 'quarter') return [iso(new Date(Date.UTC(y, qm, 1))), iso(new Date(Date.UTC(y, qm+3, 0)))];
+  if (v === 'fy')      return fyRange(0);
+  if (v === 'lastfy')  return fyRange(-1);
+  return ['', ''];
+}
+
+/* ---------- labels for codes ---------- */
+const DOC_LABEL = {opening:'Opening stock', grn:'Goods receipt', purchase_return:'Purchase return', sales_invoice:'Sales invoice',
+  sales_return:'Sales return', transfer:'Transfer', adjustment_in:'Adjustment (add)', adjustment_out:'Adjustment (remove)'};
+const MSME_LABEL = {overdue:'Overdue', due_within_7_days:'Due in 7 days', ok:'Within time', paid_late:'Paid late', paid_on_time:'Paid on time'};
+const TABLE_LABEL = {items:'Items', item_gst_rates:'GST rates', item_barcodes:'Barcodes', parties:'Parties', warehouses:'Warehouses',
+  locations:'Bins', documents:'Documents', document_lines:'Document lines', company_settings:'Company settings',
+  role_backdate_limits:'Back-date limits', tenant_users:'Team', supplier_bills:'Supplier bills', supplier_payments:'Payments',
+  bill_allocations:'Bill settlements', stock_reservations:'Reservations', item_reorder_levels:'Reorder levels', sales_points:'Counters', tenants:'Company'};
+const ACTION_LABEL = {INSERT:'Created', UPDATE:'Changed', DELETE:'Deleted'};
+const STATUS_LABEL = {draft:'Draft', posted:'Posted', cancelled:'Cancelled', confirmed:'Confirmed', closed:'Closed',
+  open:'To pick', picked:'To pack', packed:'Ready to bill', invoiced:'Billed', counting:'Counting', submitted:'Awaiting approval', approved:'Approved'};
+const cap = s => STATUS_LABEL[s] || s;
+
+/* ---------- column builders ----------
+   type: text | cat (pick from list) | num | money | date | time | bool
+   sum:  total in the footer                                         */
+const T = (k, label, o={}) => ({k, label, type:'text', ...o});
+const C = (k, label, o={}) => ({k, label, type:'cat', ...o});
+const N = (k, label, o={}) => ({k, label, type:'num', ...o});
+const M = (k, label, o={}) => ({k, label, type:'money', sum:true, ...o});
+const D = (k, label, o={}) => ({k, label, type:'date', ...o});
+const Y = (k, label, o={}) => ({k, label, type:'bool', ...o});
+const gstCols = [M('taxable_value','Taxable value'), M('igst','IGST'), M('cgst','CGST'), M('sgst','SGST'), M('cess','Cess')];
+
+/* ---------- reports ----------
+   src: view / table, rpc: function with params, range: server-side date
+   column (with from / to in the toolbar), prep: add display columns   */
+const REPORTS = [
+  {group:'Home', id:'dashboard', title:'Dashboard', custom:true, cols:[], sort:['none','asc']},
+  {group:'Stock', id:'bins', title:'Stock by bin', src:'v_stock_by_location', sort:['item_name','asc'],
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), N('qty_on_hand','Qty', {sum:true}), M('stock_value','Value')]},
+  {group:'Stock', id:'summary', title:'Stock summary', rpc:'stock_summary', params:'period', sort:['item_name','asc'],
+   note:'Opening, inward, outward and closing for the period. Value is at cost (FIFO).',
+   cols:[T('item_name','Item'), T('sku','SKU'), C('hsn_code','HSN'), C('warehouse','Warehouse'), N('opening','Opening', {sum:true}),
+         N('inward','Inward', {sum:true}), N('outward','Outward', {sum:true}), N('closing','Closing', {sum:true}), M('closing_value','Closing value')]},
+  {group:'Stock', id:'ledger', title:'Item ledger', src:'v_item_ledger', range:'movement_date', sort:['movement_date','asc'],
+   note:'Every stock movement with the running balance for that item and warehouse.',
+   prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type}),
+   cols:[D('movement_date','Date'), C('doc_label','Type'), T('doc_no','Document'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'),
+         C('bin','Bin'), T('party','Party'), T('original_vendor','Original vendor'), N('qty_in','In', {sum:true}), N('qty_out','Out', {sum:true}),
+         N('running_balance','Balance'), N('unit_cost','Cost'), M('value','Value'), Y('is_negative_draw','Went negative')]},
+  {group:'Stock', id:'available', title:'Available stock', src:'v_available_stock', sort:['item_name','asc'],
+   prep:r => ({...r, ...itemOf(r.item_id), warehouse:whOf(r.warehouse_id)}),
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty_on_hand','On hand', {sum:true}), N('qty_reserved','Held for orders', {sum:true}), N('qty_available','Available', {sum:true})]},
+  {group:'Stock', id:'ageing', title:'Stock ageing', src:'v_stock_ageing', sort:['age_days','desc'],
+   prep:r => ({...r, warehouse:whOf(r.warehouse_id), bin:binOf(r.location_id), vendor:partyOf(r.vendor_id)}),
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), C('vendor','Vendor'), T('batch_no','Batch'),
+         D('expiry_date','Expiry'), D('inward_date','Received'), N('age_days','Age (days)'), C('age_bucket','Age group'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
+  {group:'Stock', id:'vendorstock', title:'Vendor-wise stock', src:'v_vendor_stock', sort:['vendor','asc'],
+   prep:r => ({...r, warehouse:whOf(r.warehouse_id), vendor:r.vendor || 'No vendor'}),
+   cols:[C('vendor','Vendor'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
+  {group:'Stock', id:'reorder', title:'Reorder alerts', src:'v_reorder_alerts', sort:['item_name','asc'],
+   prep:r => ({...r, warehouse:whOf(r.warehouse_id)}),
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty_available','Available'), N('min_level','Minimum level'), N('suggested_order_qty','Order qty', {sum:true})]},
+  {group:'Stock', id:'slow', title:'Slow and dead stock', src:'v_slow_moving', sort:['days_without_sale','desc'],
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty_on_hand','Qty', {sum:true}), M('stock_value','Value'),
+         D('last_in_date','Last received'), D('last_out_date','Last sold'), N('days_without_sale','Days without sale'), C('movement','Movement')]},
+
+  {group:'Documents', id:'docs', title:'All documents', src:'v_documents', range:'doc_date', sort:['doc_date','desc'],
+   prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type, created_by_name:userOf(r.created_by), status_label:cap(r.status)}),
+   tools:[{label:'E-way JSON for shown rows', fn:() => gstBulk('ewaybill')}, {label:'E-invoice JSON for shown rows', fn:() => gstBulk('einvoice')}],
+   actions:r => [
+     r.status !== 'draft' && {label:'Print', fn:() => printDoc(r.id)},
+     r.status === 'posted' && ['sales_invoice','sales_return','transfer'].includes(r.doc_type) && {label:'E-invoice', fn:() => gstOne(r, 'einvoice')},
+     r.status === 'posted' && ['sales_invoice','purchase_return','transfer'].includes(r.doc_type) && {label:'E-way', fn:() => gstOne(r, 'ewaybill')},
+     r.status === 'posted' && {label:'IRN / e-way no.', fn:() => gstRefsForm(r)},
+     r.status === 'draft' && {label:'Post', fn:() => postDoc(r.id, r.doc_no)},
+     r.status === 'draft' && {label:'Serial numbers', fn:() => serialsForm(r)},
+     r.status === 'posted' && ['grn','purchase_return'].includes(r.doc_type) && {label:r.doc_type === 'grn' ? 'Make supplier bill' : 'Make debit note', fn:() => makeBill(r)},
+     r.status === 'posted' && {label:'Cancel', warn:true, fn:() => cancelDoc(r)}],
+   cols:[D('doc_date','Date'), C('doc_label','Type'), T('doc_no','Number'), C('status_label','Status'), T('order_no','Order'), C('warehouse','Warehouse'), C('to_warehouse','To warehouse'),
+         T('party','Party'), T('party_gstin','GSTIN'), C('sales_point','Counter'), T('party_doc_no','Supplier bill'), N('line_count','Lines'),
+         N('total_qty','Qty', {sum:true}), M('taxable_value','Taxable'), M('gst_amount','GST'), M('doc_value','Value'),
+         T('eway_bill_no','E-way bill'), T('irn','IRN'), C('created_by_name','Entered by'), T('reason','Reason'), Y('paid_at_counter','Paid at counter')]},
+
+  {group:'Purchases', id:'bills', title:'Supplier bills', src:'v_supplier_bill_status', sort:['bill_date','desc'],
+   tools:[{label:'Record payment', fn:() => moneyForm('payment')}],
+   prep:r => ({...r, msme_label:MSME_LABEL[r.msme_status] || (r.msme_covered ? '' : 'Not MSME')}),
+   cols:[D('bill_date','Bill date'), T('bill_no','Bill no.'), C('vendor','Vendor'), T('gstin','GSTIN'), D('due_date','Due date'), D('msme_due_date','MSME due date'),
+         C('msme_label','MSME status'), M('bill_amount','Bill amount'), M('tds_amount','TDS'), M('net_payable','Payable'), M('settled','Paid'),
+         M('outstanding','Outstanding'), N('days_overdue','Days overdue'), D('last_settled_on','Last paid')]},
+  {group:'Purchases', id:'vendorageing', title:'Vendor ageing', src:'v_vendor_ageing', sort:['total_outstanding','desc'],
+   tools:[{label:'Record payment', fn:() => moneyForm('payment')}],
+   cols:[C('vendor','Vendor'), Y('msme_covered','MSME'), M('not_due','Not due'), M('overdue_1_30','1–30 days'), M('overdue_31_60','31–60 days'),
+         M('overdue_61_90','61–90 days'), M('overdue_90_plus','Over 90 days'), M('total_outstanding','Outstanding'), M('unadjusted_credits','Advances'),
+         M('net_payable','Net payable'), M('msme_overdue_amount','MSME overdue'), D('next_msme_due_date','Next MSME due')]},
+  {group:'Purchases', id:'msme', title:'MSME payment alerts', src:'v_msme_payment_alerts', sort:['msme_due_date','asc'],
+   prep:r => ({...r, msme_label:MSME_LABEL[r.msme_status] || r.msme_status}),
+   cols:[C('vendor','Vendor'), T('bill_no','Bill no.'), D('bill_date','Bill date'), D('acceptance_date','Goods accepted'), D('msme_due_date','Pay by'),
+         N('days_left','Days left'), C('msme_label','Status'), M('outstanding','Outstanding')]},
+  {group:'Purchases', id:'msmedis', title:'MSME disallowance', rpc:'msme_disallowance', params:'fy', sort:['vendor','asc'],
+   note:'Expense not paid by the MSME due date or within the same year. Verify the section reference under the Income-tax Act, 2025.',
+   prep:r => ({...r, status_label:r.status === 'disallowed' ? 'Disallowed' : 'Allowed only if paid by ' + fmtDate(String(r.status).slice(-10))}),
+   cols:[C('vendor','Vendor'), T('bill_no','Bill no.'), D('bill_date','Bill date'), D('msme_due_date','MSME due date'), M('taxable_value','Taxable value'),
+         M('net_payable','Payable'), M('paid_by_cutoff','Paid in time'), M('disallowable_expense','Disallowable'), C('status_label','Status')]},
+
+  {group:'GST', id:'b2b', title:'GSTR-1 B2B', src:'v_gstr1_b2b', sort:['invoice_date','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), T('receiver_gstin','Customer GSTIN'), C('receiver_name','Customer'), T('invoice_no','Invoice'),
+         D('invoice_date','Date'), N('invoice_value','Invoice value'), C('place_of_supply','Place of supply'), C('reverse_charge','Reverse charge'), N('rate','Rate %'), ...gstCols]},
+  {group:'GST', id:'b2cl', title:'GSTR-1 B2C large', src:'v_gstr1_b2cl', sort:['invoice_date','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), T('invoice_no','Invoice'), D('invoice_date','Date'), N('invoice_value','Invoice value'),
+         C('place_of_supply','Place of supply'), N('rate','Rate %'), M('taxable_value','Taxable value'), M('igst','IGST'), M('cess','Cess')]},
+  {group:'GST', id:'b2cs', title:'GSTR-1 B2C small', src:'v_gstr1_b2cs', sort:['place_of_supply','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), C('supply_type','Supply'), C('place_of_supply','Place of supply'), N('rate','Rate %'), ...gstCols]},
+  {group:'GST', id:'cdnr', title:'Credit notes (registered)', src:'v_gstr1_cdnr', sort:['note_date','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), T('receiver_gstin','Customer GSTIN'), C('receiver_name','Customer'), T('note_no','Note no.'),
+         D('note_date','Date'), T('original_invoice_no','Original invoice'), N('note_value','Note value'), N('rate','Rate %'), ...gstCols]},
+  {group:'GST', id:'cdnur', title:'Credit notes (unregistered)', src:'v_gstr1_cdnur', sort:['note_date','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), T('note_no','Note no.'), D('note_date','Date'), T('original_invoice_no','Original invoice'),
+         C('place_of_supply','Place of supply'), N('note_value','Note value'), N('rate','Rate %'), M('taxable_value','Taxable value'), M('igst','IGST'), M('cess','Cess')]},
+  {group:'GST', id:'hsn', title:'HSN summary', src:'v_gstr1_hsn', sort:['hsn_code','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), C('section','Section'), C('hsn_code','HSN'), C('uqc','UQC'), N('rate','Rate %'),
+         N('total_qty','Qty', {sum:true}), M('total_value','Total value'), ...gstCols]},
+  {group:'GST', id:'docsissued', title:'Documents issued', src:'v_gstr1_docs_issued', sort:['return_period','asc'],
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), C('nature_of_document','Document'), T('serial_from','From'), T('serial_to','To'),
+         N('total_issued','Issued', {sum:true}), N('cancelled','Cancelled', {sum:true}), N('net_issued','Net issued', {sum:true})]},
+  {group:'GST', id:'eway', title:'E-way bill register', src:'v_eway_bill_register', sort:['doc_date','desc'],
+   prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type,
+               eway_label:{generated:'Generated', missing:'Missing', not_required:'Not required'}[r.eway_status] || r.eway_status}),
+   tools:[{label:'E-way JSON for shown rows', fn:() => gstBulk('ewaybill')}],
+   actions:r => [{label:'Print', fn:() => printDoc(r.id || r.doc_id)}, r.eway_status !== 'generated' && {label:'Record e-way no.', fn:() => gstRefsForm({id:r.id || r.doc_id, doc_no:r.doc_no})}],
+   cols:[D('doc_date','Date'), C('doc_label','Type'), T('doc_no','Document'), C('from_warehouse','From'), T('to_party_or_warehouse','To'), C('to_state','To state'),
+         M('doc_value','Value'), C('eway_label','E-way bill'), T('eway_bill_no','E-way bill no.'), T('vehicle_no','Vehicle'), T('irn','IRN')]},
+  {group:'GST', id:'gstr3b', title:'GSTR-3B as per books', src:'v_gstr3b_summary', sort:['return_period','asc'],
+   note:'Input credit here comes from purchase entries. Reconcile with GSTR-2B before filing.',
+   cols:[C('return_period','Month'), C('gstin','Our GSTIN'), M('outward_taxable_value','Outward taxable'), M('outward_igst','IGST'), M('outward_cgst','CGST'),
+         M('outward_sgst','SGST'), M('outward_cess','Cess'), M('outward_nil_exempt_value','Nil / exempt'), M('inter_state_unregistered_value','Inter-state to unregistered'),
+         M('itc_igst','ITC IGST'), M('itc_cgst','ITC CGST'), M('itc_sgst','ITC SGST'), M('itc_cess','ITC cess')]},
+
+  {group:'Controls', id:'audit', title:'Employee log', src:'audit_log', range:'at', sort:['at','desc'],
+   note:'Who changed what. Owners and admins only.',
+   prep:r => ({...r, who:userOf(r.user_id), what:TABLE_LABEL[r.table_name] || r.table_name, action_label:ACTION_LABEL[r.action] || r.action,
+               ref:(r.new_data || r.old_data || {}).doc_no || (r.new_data || r.old_data || {}).sku || (r.new_data || r.old_data || {}).bill_no || (r.new_data || r.old_data || {}).name || '',
+               changes:diffOf(r)}),
+   cols:[{...D('at','When'), type:'time'}, C('who','User'), C('action_label','Action'), C('what','Record'), T('ref','Reference'), T('changes','Changed fields'), T('user_agent','Device')]},
+  {group:'Orders', id:'orders', title:'Orders', src:'v_orders', sort:['order_date','desc'],
+   tools:[{label:'New purchase order', fn:() => orderForm('purchase')}, {label:'New sales order', fn:() => orderForm('sales')}],
+   prep:r => ({...r, type_label:r.order_type === 'purchase' ? 'Purchase' : 'Sales'}),
+   actions:r => [
+     r.status === 'draft' && {label:'Confirm', fn:() => confirmOrder(r)},
+     r.status === 'confirmed' && r.pending_qty > 0 && r.order_type === 'purchase' && {label:'Receive all pending', fn:() => receiveAll(r)},
+     r.status === 'confirmed' && r.pending_qty > 0 && r.order_type === 'sales' && {label:'Bill all pending', fn:() => billAll(r)},
+     r.status === 'confirmed' && r.backorder_qty > 0 && {label:'Hold new stock', fn:() => rpcAct('rereserve_order', {p_order:r.id}, x => `${QTY.format(x)} more units held.`)},
+     r.status === 'confirmed' && {label:'Close', fn:() => confirm(`Close ${r.order_no}? Pending quantities will no longer be expected.`) && rpcAct('close_order', {p_order:r.id, p_cancel:false})},
+     ['draft','confirmed'].includes(r.status) && !r.done_qty && {label:'Cancel', warn:true, fn:() => confirm(`Cancel ${r.order_no}?`) && rpcAct('close_order', {p_order:r.id, p_cancel:true})}],
+   cols:[D('order_date','Date'), C('type_label','Type'), T('order_no','Order no.'), C('party','Party'), C('warehouse','Warehouse'), C('sales_point','Counter'),
+         C('progress','Progress'), N('line_count','Lines'), N('ordered_qty','Ordered', {sum:true}), N('done_qty','Done', {sum:true}),
+         N('pending_qty','Pending', {sum:true}), N('backorder_qty','Backorder', {sum:true}), M('order_value','Value'), D('expected_date','Expected')]},
+  {group:'Orders', id:'orderlines', title:'Pending order lines', src:'v_order_lines_status', sort:['order_date','asc'],
+   note:'Backorder is what a sales order still needs and has no stock held for.',
+   prep:r => ({...r, type_label:r.order_type === 'purchase' ? 'Purchase' : 'Sales', status_label:cap(r.order_status)}),
+   actions:r => [r.order_status === 'confirmed' && !r.closed && r.pending_qty > 0 &&
+     {label:'Close line', fn:() => confirm(`Stop expecting ${QTY.format(r.pending_qty)} of ${r.sku} on ${r.order_no}?`) && tableAct('order_lines', r.order_line_id, {closed:true})}],
+   cols:[D('order_date','Date'), C('type_label','Type'), T('order_no','Order no.'), C('status_label','Status'), C('party','Party'), C('warehouse','Warehouse'),
+         T('item_name','Item'), T('sku','SKU'), C('unit','Unit'), N('unit_qty','Qty in unit'), N('ordered_qty','Ordered', {sum:true}), N('done_qty','Done', {sum:true}),
+         N('pending_qty','Pending', {sum:true}), N('reserved_qty','Held', {sum:true}), N('backorder_qty','Backorder', {sum:true}), N('rate','Rate'), Y('closed','Closed'), D('expected_date','Expected')]},
+  {group:'Orders', id:'picks', title:'Pick lists', src:'v_pick_lists', sort:['created_at','desc'],
+   prep:r => ({...r, status_label:cap(r.status)}),
+   actions:r => [{label:'Print pick slip', fn:() => WMSPrint.pick(S.sb, r.id).catch(e => toast(e.message, 'err'))},
+                 ['picked','packed'].includes(r.status) && {label:'Make invoice and post', fn:() => billPick(r)}],
+   cols:[{...D('created_at','Created'), type:'time'}, T('pick_no','Pick list'), C('status_label','Status'), T('order_no','Order'), C('customer','Customer'),
+         C('warehouse','Warehouse'), N('qty_to_pick','To pick', {sum:true}), N('qty_picked','Picked', {sum:true}), N('qty_packed','Packed', {sum:true}),
+         N('lines_not_in_stock','Lines not in stock'), T('invoice_no','Invoice')]},
+
+  {group:'Sales', id:'custinv', title:'Customer invoices', src:'v_customer_invoice_status', sort:['doc_date','desc'],
+   tools:[{label:'Record receipt', fn:() => moneyForm('receipt')}],
+   cols:[D('doc_date','Date'), T('doc_no','Invoice'), C('customer','Customer'), T('gstin','GSTIN'), C('warehouse','Warehouse'), D('due_date','Due date'),
+         M('invoice_value','Invoice value'), M('received','Received'), M('outstanding','Outstanding'), N('days_overdue','Days overdue'), D('last_received_on','Last received')]},
+  {group:'Sales', id:'custageing', title:'Customer ageing', src:'v_customer_ageing', sort:['total_outstanding','desc'],
+   tools:[{label:'Record receipt', fn:() => moneyForm('receipt')}],
+   prep:r => ({...r, control:{none:'No limit check', warn:'Warn', block:'Block billing'}[r.credit_control]}),
+   cols:[C('customer','Customer'), M('credit_limit','Credit limit', {sum:false}), C('control','Limit check'), N('credit_used_pct','Limit used %'),
+         M('not_due','Not due'), M('overdue_1_30','1–30 days'), M('overdue_31_60','31–60 days'), M('overdue_61_90','61–90 days'),
+         M('overdue_90_plus','Over 90 days'), M('total_outstanding','Outstanding'), M('unadjusted_credits','Advances and credit notes'), M('net_receivable','Net receivable')]},
+
+  {group:'Stock', id:'putaway', title:'Putaway pending', src:'v_putaway_pending', sort:['since','asc'],
+   note:'Stock waiting in the receiving bay. Staff put it away with the phone app (Put away), which suggests the bin.',
+   cols:[C('warehouse','Warehouse'), T('item_name','Item'), T('sku','SKU'), T('batch_no','Batch'), D('expiry_date','Expiry'), N('qty','Qty', {sum:true}),
+         D('since','Received'), C('suggested_bin','Suggested bin')]},
+  {group:'Stock', id:'refills', title:'Bin refills', src:'v_bin_refills', sort:['to_bin','asc'],
+   note:'Home bins at or below their minimum. Refill them from the phone app (Refill bins) or here.',
+   actions:r => [r.from_location_id && {label:'Move now', fn:() => officeMove(r.warehouse_id, r.item_id, r.from_location_id, r.to_location_id, Math.min(num(r.refill_qty), num(r.from_qty)), 'Refill ' + r.to_bin)}],
+   cols:[C('warehouse','Warehouse'), T('item_name','Item'), T('sku','SKU'), C('to_bin','Home bin'), N('bin_qty','In bin'), N('min_qty','Minimum'), N('max_qty','Maximum'),
+         N('refill_qty','To refill'), C('from_bin','Take from'), N('from_qty','Available there')]},
+  {group:'Stock', id:'serials', title:'Serial numbers', src:'v_serials', sort:['serial_no','asc'],
+   prep:r => ({...r, status_label:{in_stock:'In stock', sold:'Sold', returned:'Returned to supplier', scrapped:'Written off', void:'Cancelled'}[r.status], last_label:DOC_LABEL[r.last_doc_type] || ''}),
+   actions:r => [{label:'History', fn:() => { LS.set('wms.f.serialhist', {serial_no:{vals:[r.serial_no]}}); openReport(REPORTS.find(x => x.id === 'serialhist')); }}],
+   cols:[T('serial_no','Serial no.'), T('item_name','Item'), T('sku','SKU'), C('status_label','Status'), C('warehouse','Warehouse'), C('bin','Bin'), C('party','Customer / supplier'),
+         C('last_label','Last entry'), T('last_document','Document'), D('last_date','Date')]},
+  {group:'Stock', id:'serialhist', title:'Serial history', src:'v_serial_history', range:'doc_date', sort:['created_at','desc'],
+   prep:r => ({...r, type_label:DOC_LABEL[r.doc_type] || r.doc_type, rev:r.reversed ? 'Cancelled' : ''}),
+   cols:[T('serial_no','Serial no.'), T('item_name','Item'), D('doc_date','Date'), C('type_label','Entry'), T('doc_no','Document'), C('from_status','From'), C('to_status','To'),
+         C('from_warehouse','From warehouse'), C('to_warehouse','To warehouse'), C('party','Party'), C('rev','Cancelled')]},
+  {group:'Stock', id:'variants', title:'Stock by variant', src:'v_variant_stock', sort:['style_name','asc'],
+   prep:r => ({...r, attr_label:Object.entries(r.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}),
+   cols:[C('style_name','Style'), T('item_name','Variant'), T('sku','SKU'), T('attr_label','Size / colour'), C('warehouse','Warehouse'), N('qty','Qty', {sum:true})]},
+  {group:'Stock', id:'kits', title:'Kits and bundles', src:'v_kit_availability', sort:['kit_name','asc'],
+   note:'Bundles are sold as one item and their parts leave stock. Assembled kits are built first; they then hold their own stock.',
+   prep:r => ({...r, type_label:r.kit_type === 'bundle' ? 'Bundle (sold as a set)' : 'Assembled kit'}),
+   actions:r => [r.kit_type === 'assembly' && {label:'Assemble', fn:() => assembleForm(r, false)}, r.kit_type === 'assembly' && {label:'Take apart', fn:() => assembleForm(r, true)},
+                 {label:'Parts', fn:() => { LS.set('wms.f.kitparts', {kit_name:{vals:[r.kit_name]}}); openReport(REPORTS.find(x => x.id === 'kitparts')); }}],
+   cols:[T('kit_name','Kit'), T('kit_sku','SKU'), C('type_label','Type'), C('warehouse','Warehouse'), N('can_make','Can make from stock')]},
+  {group:'Stock checks', id:'counts', title:'Stock counts', src:'v_counts', sort:['started_at','desc'],
+   note:'Counts are started and scanned in the phone app. Approving posts the differences as stock adjustments.',
+   prep:r => ({...r, status_label:cap(r.status), started_by_name:userOf(r.started_by), approved_by_name:r.approved_by ? userOf(r.approved_by) : ''}),
+   actions:r => [r.status === 'submitted' && {label:'Approve', fn:() => approveCount(r)}],
+   cols:[T('count_no','Count'), C('status_label','Status'), C('warehouse','Warehouse'), C('scope','Scope'), Y('blind','Blind'),
+         {...D('started_at','Started'), type:'time'}, C('started_by_name','Started by'), N('lines','Lines'), N('counted_lines','Counted'),
+         N('lines_with_difference','With difference'), C('approved_by_name','Approved by'), T('reason','Reason')]},
+  {group:'Stock checks', id:'countlines', title:'Count differences', src:'v_count_lines', sort:['variance_value','asc'],
+   prep:r => ({...r, status_label:cap(r.status)}),
+   cols:[T('count_no','Count'), C('status_label','Status'), C('warehouse','Warehouse'), C('bin','Bin'), T('item_name','Item'), T('sku','SKU'),
+         N('system_qty','Book qty', {sum:true}), N('counted_qty','Counted', {sum:true}), N('variance','Difference', {sum:true}), M('variance_value','Difference value')]},
+  {group:'Stock checks', id:'cycledue', title:'Cycle count plan', src:'v_cycle_count_due', sort:['due_on','asc'],
+   note:'ABC classes from the value issued in the last 90 days: A = first 80%, B = next 15%, C = the rest. Each class is counted every so many days.',
+   tools:[{label:'Start today\'s cycle count', fn:() => cycleForm()}, {label:'Plan settings', fn:() => cyclePlanForm()}],
+   prep:r => ({...r, due_label:r.days_overdue > 0 ? `${r.days_overdue} days overdue` : r.days_overdue === 0 ? 'Due today' : `In ${-r.days_overdue} days`}),
+   cols:[C('warehouse','Warehouse'), T('item_name','Item'), T('sku','SKU'), C('abc_class','Class'), M('issue_value_90d','Issued, 90 days'), N('on_hand','On hand'),
+         D('last_counted','Last counted'), D('due_on','Due on'), C('due_label','Status')]},
+  {group:'Stock checks', id:'expiry', title:'Expiry alerts', src:'v_expiry_alerts', sort:['expiry_date','asc'],
+   cols:[C('expiry_status','Status'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), Y('in_quarantine','In quarantine'),
+         T('batch_no','Batch'), D('expiry_date','Expiry'), N('days_to_expiry','Days left'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
+  {group:'Purchases', id:'returnable', title:'Return to supplier', src:'v_returnable_stock', sort:['inward_date','asc'],
+   note:'Stock on hand by the supplier it came from. Filter to one supplier (for example Condition: Quarantine or Expired) and make the return.',
+   tools:[{label:'Make return for shown rows', fn:() => supplierReturn(sorted(filtered()))}],
+   actions:r => [{label:'Return this lot', fn:() => supplierReturn([r])}],
+   cols:[C('supplier','Supplier'), C('condition','Condition'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), T('batch_no','Batch'),
+         D('expiry_date','Expiry'), D('inward_date','Received'), N('qty','Qty', {sum:true}), M('value','Value at cost')]},
+  {group:'Stock checks', id:'quarantine', title:'Quarantine stock', src:'v_quarantine_stock', sort:['inward_date','desc'],
+   prep:r => ({...r, came_label:DOC_LABEL[r.came_from] || r.came_from}),
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), C('vendor','Vendor'), T('batch_no','Batch'), D('expiry_date','Expiry'),
+         D('inward_date','Received'), C('came_label','Came from'), T('doc_no','Document'), T('reason','Reason'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
+
+  {group:'Masters', id:'items', title:'Items', src:'v_items_master', sort:['name','asc'], master:'items',
+   tools:[{label:'Add item', fn:() => editForm('items')}, {label:'Import from Excel', fn:() => importForm('items')}, {label:'Print labels', fn:() => labelForm('item')}],
+   prep:r => ({...r, neg:r.negative_stock_mode ? NEG_LABEL[r.negative_stock_mode] : 'Company setting',
+               kind:r.is_template ? 'Style (has variants)' : r.parent_item_id ? 'Variant' : r.kit_type === 'bundle' ? 'Bundle' : r.kit_type === 'assembly' ? 'Assembled kit' : 'Item'}),
+   actions:r => [{label:'Edit', fn:() => editForm('items', r)}, {label:'GST change', fn:() => editForm('item_gst_rates', null, {item_id:r.id})},
+                 {label:'Barcode', fn:() => editForm('item_barcodes', null, {item_id:r.id})},
+                 !r.parent_item_id && !r.kit_type && {label:r.is_template ? 'Add variants' : 'Make variants', fn:() => variantForm(r)},
+                 r.kit_type && {label:'Kit parts', fn:() => editForm('kit_components', null, {kit_item_id:r.id})},
+                 {label:'Home bin', fn:() => editForm('item_bins', null, {item_id:r.id})}],
+   cols:[T('name','Item'), T('sku','SKU'), C('hsn_code','HSN'), C('uom','Unit'), N('current_gst_rate','GST %'), D('gst_from','GST from'), N('mrp','MRP'),
+         N('std_purchase_price','Purchase price'), N('default_discount_pct','Discount %'), T('barcodes','Barcodes'), T('units','Other units'),
+         Y('track_batch','Batch'), Y('track_expiry','Expiry'), Y('track_serial','Serial'), C('kind','Kind'), C('neg','Negative stock'), Y('is_active','Active')]},
+  {group:'Masters', id:'homebins', title:'Home bins (min / max)', src:'v_item_bins', sort:['bin','asc'],
+   note:'The bin where an item normally sits. Putaway suggests it first, and a refill is raised when it falls to the minimum.',
+   tools:[{label:'Add home bin', fn:() => editForm('item_bins')}],
+   actions:r => [{label:'Edit', fn:() => editForm('item_bins', r)}, {label:'Remove', warn:true, fn:() => removeRow('item_bins', r)}],
+   cols:[C('warehouse','Warehouse'), C('bin','Bin'), T('item_name','Item'), T('sku','SKU'), N('min_qty','Minimum'), N('max_qty','Maximum'), N('bin_qty','In bin now')]},
+  {group:'Masters', id:'kitparts', title:'Kit parts', src:'v_kits', sort:['kit_name','asc'],
+   tools:[{label:'Add part', fn:() => editForm('kit_components')}],
+   prep:r => ({...r, type_label:r.kit_type === 'bundle' ? 'Bundle' : 'Assembled kit'}),
+   actions:r => [{label:'Edit', fn:() => editForm('kit_components', r)}, {label:'Remove', warn:true, fn:() => removeRow('kit_components', r)}],
+   cols:[T('kit_name','Kit'), T('kit_sku','Kit SKU'), C('type_label','Type'), T('component_name','Part'), T('component_sku','Part SKU'), N('qty','Qty per kit'), C('uom','Unit')]},
+  {group:'Masters', id:'gstrates', title:'GST rate history', src:'v_gst_rate_history', sort:['effective_from','desc'],
+   note:'A rate change is a new row with the date it applies from. Old invoices keep the rate they were made with.',
+   tools:[{label:'Add rate change', fn:() => editForm('item_gst_rates')}],
+   cols:[T('item_name','Item'), T('sku','SKU'), C('hsn_code','HSN'), D('effective_from','Applies from'), N('gst_rate','GST %'), N('cess_rate','Cess %'), T('notification','Notification')]},
+  {group:'Masters', id:'barcodes', title:'Barcodes', src:'v_item_barcodes', sort:['item_name','asc'],
+   tools:[{label:'Add barcode', fn:() => editForm('item_barcodes')}],
+   actions:r => [{label:'Edit', fn:() => editForm('item_barcodes', r)}, {label:'Remove', warn:true, fn:() => removeRow('item_barcodes', r)}],
+   cols:[T('barcode','Barcode'), T('item_name','Item'), T('sku','SKU'), N('pack_qty','Units per scan'), C('uom','Unit')]},
+  {group:'Masters', id:'units', title:'Units', src:'v_item_units', sort:['item_name','asc'],
+   note:'Extra units for buying or selling, such as BOX = 12 NOS. Stock is always kept in the base unit.',
+   tools:[{label:'Add unit', fn:() => editForm('item_units')}],
+   actions:r => [{label:'Edit', fn:() => editForm('item_units', r)}, {label:'Remove', warn:true, fn:() => removeRow('item_units', r)}],
+   cols:[T('item_name','Item'), T('sku','SKU'), C('unit','Unit'), N('factor','Base units in one'), C('base_unit','Base unit')]},
+  {group:'Masters', id:'reorderlevels', title:'Reorder levels', src:'v_reorder_levels', sort:['item_name','asc'],
+   tools:[{label:'Add reorder level', fn:() => editForm('item_reorder_levels')}],
+   actions:r => [{label:'Edit', fn:() => editForm('item_reorder_levels', r)}, {label:'Remove', warn:true, fn:() => removeRow('item_reorder_levels', r)}],
+   cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('min_level','Minimum level'), N('reorder_qty','Reorder qty')]},
+  {group:'Masters', id:'parties', title:'Suppliers and customers', src:'parties', sort:['name','asc'],
+   tools:[{label:'Add party', fn:() => editForm('parties')}, {label:'Import from Excel', fn:() => importForm('parties')}],
+   prep:r => ({...r, type_label:{supplier:'Supplier', customer:'Customer', both:'Both'}[r.party_type], state:stateName(r.state_code),
+               pl:S.lk.pls.find(x => x.id === r.price_list_id)?.name || '', ctrl:{none:'No check', warn:'Warn', block:'Block billing'}[r.credit_control]}),
+   actions:r => [{label:'Edit', fn:() => editForm('parties', r)}],
+   cols:[T('name','Name'), C('type_label','Type'), T('gstin','GSTIN'), C('state','State'), Y('is_msme','MSME'), C('msme_category','MSME category'),
+         C('msme_activity','Activity'), N('credit_days','Credit days'), N('credit_limit','Credit limit'), C('ctrl','Limit check'), C('pl','Price list'), Y('is_active','Active')]},
+  {group:'Masters', id:'warehouses', title:'Warehouses', src:'warehouses', sort:['name','asc'],
+   tools:[{label:'Add warehouse', fn:() => editForm('warehouses')}],
+   prep:r => ({...r, state:stateName(r.state_code), qbin:binOf(r.quarantine_location_id), rbin:binOf(r.receiving_location_id)}),
+   actions:r => [{label:'Edit', fn:() => editForm('warehouses', r)},
+                 !r.receiving_location_id && {label:'Set up receiving bay', fn:() => confirm(`Goods received at ${r.name} without a bin will go to a RECEIVING bin, to be put away from the phone app. Set it up?`) && rpcAct('ensure_receiving_bin', {p_wh:r.id}, () => 'Receiving bay ready.')},
+                 {label:'Cycle count plan', fn:() => cyclePlanForm(r.id)}],
+   cols:[T('code','Code'), T('name','Name'), T('gstin','GSTIN'), C('state','State'), T('address','Address'), T('pincode','PIN'), C('qbin','Quarantine bin'), C('rbin','Receiving bay'), Y('is_active','Active')]},
+  {group:'Masters', id:'binmaster', title:'Bins', src:'v_bins', sort:['full_code','asc'],
+   tools:[{label:'Add bin', fn:() => editForm('locations')}, {label:'Create many bins', fn:() => binGenerator()}, {label:'Print labels', fn:() => labelForm('bin')}],
+   actions:r => [{label:'Edit', fn:() => editForm('locations', r)}],
+   cols:[T('full_code','Bin'), C('warehouse','Warehouse'), C('loc_type','Type'), Y('is_quarantine','Quarantine'), Y('is_active','Active'), N('qty_in_bin','Qty in bin', {sum:true}), N('capacity_units','Holds up to')]},
+  {group:'Masters', id:'counters', title:'Counters and kiosks', src:'sales_points', sort:['name','asc'],
+   tools:[{label:'Add counter', fn:() => editForm('sales_points')}],
+   prep:r => ({...r, warehouse:whOf(r.warehouse_id), type_label:{store:'Store counter', kiosk:'Kiosk', online:'Online'}[r.sp_type]}),
+   actions:r => [{label:'Edit', fn:() => editForm('sales_points', r)}],
+   cols:[T('name','Name'), C('type_label','Type'), C('warehouse','Sells from'), Y('is_active','Active')]},
+  {group:'Masters', id:'pricelists', title:'Price lists', src:'price_lists', sort:['name','asc'],
+   tools:[{label:'Add price list', fn:() => editForm('price_lists')}],
+   actions:r => [{label:'Edit', fn:() => editForm('price_lists', r)}],
+   cols:[T('name','Name'), C('list_type','For'), Y('is_active','Active')]},
+  {group:'Masters', id:'prices', title:'Price list rates', src:'v_price_list_items', sort:['price_list','asc'],
+   note:'A customer or supplier gets the rate from the price list set on their master. Slabs apply from the minimum quantity.',
+   tools:[{label:'Add rate', fn:() => editForm('price_list_items')}, {label:'Import from Excel', fn:() => importForm('price_list_items')}],
+   actions:r => [{label:'Edit', fn:() => editForm('price_list_items', r)}, {label:'Remove', warn:true, fn:() => removeRow('price_list_items', r)}],
+   cols:[C('price_list','Price list'), T('item_name','Item'), T('sku','SKU'), D('effective_from','From'), N('min_qty','From qty'), N('rate','Rate'), N('discount_pct','Discount %'), N('mrp','MRP')]},
+  {group:'Masters', id:'schemes', title:'Schemes', src:'v_schemes', sort:['valid_from','desc'],
+   tools:[{label:'Add scheme', fn:() => editForm('schemes')}],
+   actions:r => [{label:'Edit', fn:() => editForm('schemes', r)}],
+   cols:[T('name','Scheme'), T('item_name','Item'), T('sku','SKU'), N('buy_qty','Buy'), N('free_qty','Free'), T('free_sku','Free item'), C('party','Only for'),
+         D('valid_from','From'), D('valid_to','To'), Y('is_active','Active')]},
+
+  {group:'Settings', id:'profile', title:'Company profile', src:'tenants', tenantCol:'id', sort:['name','asc'],
+   note:'Printed on invoices and used for e-invoice and e-way bills.',
+   actions:r => [{label:'Edit', fn:() => editForm('tenants', r)}],
+   cols:[T('name','Company'), T('legal_name','Legal name'), T('gstin','GSTIN'), T('pan','PAN'), T('address1','Address'), T('city','City'), T('pincode','PIN'),
+         T('phone','Phone'), T('email','Email'), T('bank_account','Bank account'), Y('einvoice_applicable','E-invoice applies')]},
+  {group:'Tally', id:'tallysync', title:'Tally sync', src:'v_tally_queue', sort:['doc_date','asc'],
+   note:'Entries not yet in Tally. Send them through the Tally Bridge on the Tally computer, or download an XML file to import in Tally.',
+   tools:[{label:'Connect Tally Bridge', fn:() => bridgeConnect()}, {label:'Send shown rows to Tally', fn:() => tallySend()}, {label:'Download XML for shown rows', fn:() => tallyExport()}],
+   prep:r => ({...r, type_label:DOC_LABEL[r.doc_type] || {receipt:'Customer receipt', payment:'Supplier payment'}[r.doc_type] || r.doc_type,
+               company:tallyCompanyFor(r.gstin), side_label:r.side === 'receiver' ? 'Receiving branch' : '', act_label:r.action === 'cancel' ? 'Cancel in Tally' : 'Create'}),
+   actions:r => [{label:'Mark as done', fn:() => tallyMarkDone(r)}],
+   cols:[D('doc_date','Date'), C('type_label','Type'), T('doc_no','Number'), C('party','Party'), C('gstin','GSTIN'), C('company','Tally company'),
+         C('side_label','Side'), C('act_label','To do'), M('amount','Amount'), T('last_error','Last error')]},
+  {group:'Tally', id:'tallylog', title:'Tally sync history', src:'tally_sync_log', range:'created_at', sort:['created_at','desc'],
+   prep:r => ({...r, who:userOf(r.created_by)}),
+   cols:[{...D('created_at','When'), type:'time'}, C('entity','Entry'), C('action','Action'), C('side','Side'), C('status','Result'), T('voucher_no','Voucher no.'),
+         C('tally_company','Tally company'), T('message','Message'), C('who','By')]},
+  {group:'Tally', id:'tallysettings', title:'Tally ledgers', src:'tally_settings', sort:['tenant_id','asc'],
+   note:'Ledger and voucher type names used when posting to Tally. {rate} is replaced by the GST rate, e.g. Sales @ 18%.',
+   actions:r => [{label:'Edit', fn:() => editForm('tally_settings', r)}],
+   cols:[D('sync_from','Send entries from'), T('sales_ledger','Sales ledger'), T('purchase_ledger','Purchase ledger'), T('walkin_ledger','Counter sales party'),
+         T('bank_ledger','Bank ledger'), T('cash_ledger','Cash ledger'), T('out_cgst','Output CGST'), T('in_cgst','Input CGST')]},
+  {group:'Tally', id:'tallycompanies', title:'Tally companies', src:'tally_companies', sort:['gstin','asc'],
+   note:'The Tally company for each GSTIN. The name must match the company open in TallyPrime.',
+   tools:[{label:'Add company', fn:() => editForm('tally_companies')}],
+   actions:r => [{label:'Edit', fn:() => editForm('tally_companies', r)}, {label:'Remove', warn:true, fn:() => removeRow('tally_companies', r)}],
+   cols:[T('gstin','GSTIN'), T('company_name','Tally company')]},
+  {group:'Controls', id:'approvals', title:'Approvals', src:'v_approvals', range:'requested_at', sort:['requested_at','desc'],
+   note:'Requests raised when an entry breaks an approval rule. After approval, the entry can be posted or confirmed.',
+   prep:r => ({...r, kind_label:APPROVAL_KIND[r.kind] || r.kind, status_label:{pending:'Waiting', approved:'Approved', rejected:'Rejected', used:'Approved and used'}[r.status],
+               ref_label:DOC_LABEL[r.ref_type] || {purchase_order:'Purchase order', sales_order:'Sales order'}[r.ref_type] || r.ref_type,
+               by:userOf(r.requested_by), dec:r.decided_by ? userOf(r.decided_by) : '', wh:whOf(r.warehouse_id)}),
+   actions:r => [r.status === 'pending' && {label:'Approve', fn:() => decideForm(r, true)}, r.status === 'pending' && {label:'Reject', warn:true, fn:() => decideForm(r, false)},
+                 r.status === 'approved' && r.document_id && r.ref_status === 'draft' && {label:'Post now', fn:() => postDoc(r.document_id, r.ref_no)},
+                 r.status === 'approved' && r.document_id && r.action === 'cancel' && r.ref_status === 'posted' && {label:'Cancel now', fn:() => cancelDoc({id:r.document_id, doc_no:r.ref_no})},
+                 r.status === 'approved' && r.order_id && r.ref_status === 'draft' && {label:'Confirm now', fn:() => confirmOrder({id:r.order_id, order_no:r.ref_no, order_type:'purchase'})}],
+   cols:[C('status_label','Status'), C('kind_label','Rule'), C('ref_label','Entry'), T('ref_no','Number'), D('ref_date','Date'), C('party','Party'), C('wh','Warehouse'),
+         T('summary','What needs approval'), T('request_note','Note'), C('by','Asked by'), {...D('requested_at','Asked on'), type:'time'}, C('dec','Decided by'), T('decision_note','Decision note')]},
+  {group:'Settings', id:'approvalrules', title:'Approval rules', src:'approval_rules', sort:['tenant_id','asc'],
+   note:'Leave a limit blank to switch that rule off. Approvers cannot approve their own requests, except the owner.',
+   actions:r => [{label:'Edit', fn:() => editForm('approval_rules', r)}],
+   prep:r => ({...r, roles:(r.approver_roles || []).map(x => ROLE_LABEL[x] || x).join(', ')}),
+   cols:[N('discount_above_pct','Discount above %'), Y('below_cost_needs_approval','Below cost'), Y('credit_limit_needs_approval','Over credit limit'),
+         M('adjustment_above_value','Adjustment above Rs'), M('purchase_order_above_value','Purchase order above Rs'), Y('cancel_needs_approval','Cancelling'), C('roles','Approvers')]},
+  {group:'Settings', id:'settings', title:'Company settings', src:'company_settings', sort:['tenant_id','asc'],
+   actions:r => [{label:'Edit', fn:() => editForm('company_settings', r)}],
+   prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO'}),
+   cols:[D('books_lock_date','Books locked up to'), C('cost_label','Stock valuation'), C('neg','Negative stock'), N('near_expiry_days','Near-expiry days'), N('po_excess_pct','Allowed excess over PO %'),
+         Y('warn_below_cost','Warn below cost'), C('timezone','Time zone')]},
+  {group:'Settings', id:'backdate', title:'Back-date limits', src:'role_backdate_limits', sort:['role','asc'],
+   note:'How many days back each role can post entries. A role not listed has no limit (the lock date still applies).',
+   tools:[{label:'Add limit', fn:() => editForm('role_backdate_limits')}],
+   prep:r => ({...r, role_label:ROLE_LABEL[r.role]}),
+   actions:r => [{label:'Edit', fn:() => editForm('role_backdate_limits', r)}, {label:'Remove', warn:true, fn:() => removeRow('role_backdate_limits', r)}],
+   cols:[C('role_label','Role'), N('max_days_back','Days back allowed')]},
+  {group:'Settings', id:'team', title:'Team', rpc:'team_members', rpcArgs:() => ({p_tenant:S.tenant}), sort:['email','asc'],
+   note:'Staff first create an account in the app with their email. Then add them here.',
+   tools:[{label:'Add team member', fn:() => teamForm()}],
+   prep:r => ({...r, role_label:ROLE_LABEL[r.role], wh_label:['owner','admin'].includes(r.role) ? 'All' : (S.lk.uwh[r.user_id] || []).map(whOf).join(', ') || 'All'}),
+   actions:r => [{label:'Change role', fn:() => teamForm(r)}, !['owner','admin'].includes(r.role) && {label:'Warehouses', fn:() => whAccessForm(r)},
+                 {label:r.is_active ? 'Deactivate' : 'Activate', warn:r.is_active, fn:() => teamActive(r)}],
+   cols:[T('email','Email'), C('role_label','Role'), C('wh_label','Warehouses'), Y('is_active','Active')]}
+];
+
+/* ---------- state ---------- */
+const S = {
+  sb:null, user:null, tenants:[], tenant:null, role:null,
+  lk:{wh:{}, loc:{}, party:{}, item:{}, user:{}, bc:{}, parties:[], items:[], units:[], whs:[], pls:[], locs:[]},
+  rep:null, rows:[], loading:false,
+  f:{}, sort:null, q:'', limit:300,
+  params:{from:fyRange(0)[0], to:isoToday()},
+  pop:null, auto:LS.get('wms.colAuto', false)
+};
+const whOf = id => S.lk.wh[id] || '';
+const binOf = id => S.lk.loc[id] || '';
+const partyOf = id => S.lk.party[id] || '';
+const itemOf = id => S.lk.item[id] || {item_name:'', sku:''};
+const userOf = id => id ? (S.lk.user[id] || 'Other user') : 'System';
+function diffOf(r){
+  if (r.action !== 'UPDATE' || !r.old_data || !r.new_data) return '';
+  return Object.keys(r.new_data).filter(k => JSON.stringify(r.new_data[k]) !== JSON.stringify(r.old_data[k]) && !/_at$/.test(k))
+    .map(k => `${k}: ${short(r.old_data[k])} → ${short(r.new_data[k])}`).join('; ');
+}
+const short = v => { const s = v === null || v === undefined ? 'blank' : String(v); return s.length > 24 ? s.slice(0, 22) + '…' : s; };
+
+let toastT;
+function toast(m, kind=''){ const t = $('#toast'); t.textContent = m; t.className = 'toast ' + kind; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), kind ? 6000 : 2500); }
+
+/* Built-in server: the warehouse-saas Supabase project (Mumbai). The anon key is public by design;
+   row-level security in the database decides what each signed-in user can see. */
+const WMS_SERVER = {url:'https://vubvdyupnqyuotobdebq.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1YnZkeXVwbnF5dW90b2JkZWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNDA0MTQsImV4cCI6MjEwNTgxNjQxNH0.qwmvCbkzpzvFvK6QdY0_mpcX4MjkeMManr0WyvbYYtc'};
+const wmsCfg = () => LS.get('wms.cfg', null) || WMS_SERVER;
+/* ---------- connect & login (shared with the scanner app) ---------- */
+function viewSetup(){
+  const c = wmsCfg();
+  $('#root').innerHTML = `<div class="card"><h1>Server settings</h1>
+    <p class="note">Only change this if you are moving to another Supabase project.</p>
+    <label for="u">Project URL</label><input id="u" value="${esc(c.url)}" placeholder="https://xxxx.supabase.co">
+    <label for="k">Anon (public) key</label><input id="k" value="${esc(c.key)}">
+    <button class="btn primary" id="go">Connect</button> <button class="btn" id="dflt">Use built-in server</button> <button class="btn" id="back">Back</button></div>`;
+  $('#dflt').onclick = () => { LS.del('wms.cfg'); boot(); };
+  $('#back').onclick = () => boot();
+  $('#go').onclick = () => { const url = $('#u').value.trim().replace(/\/$/, ''), key = $('#k').value.trim();
+    if (!/^https:\/\//.test(url) || key.length < 20) return toast('Enter the project URL and anon key.', 'err');
+    LS.set('wms.cfg', {url, key}); boot(); };
+}
+function viewLogin(){
+  $('#root').innerHTML = `<div class="card"><h1>Sign in</h1>
+    <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+    <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+    <button class="btn primary" id="go">Sign in</button>
+    <p class="note">New here? <button class="linkbtn" id="su">Create an account</button> with this email and password.<br>
+    <button class="linkbtn" id="chg">Server settings</button></p></div>`;
+  const go = async () => { const {error} = await S.sb.auth.signInWithPassword({email:$('#em').value.trim(), password:$('#pw').value});
+    if (error) return toast(error.message, 'err'); afterLogin(); };
+  $('#su').onclick = async () => {
+    const email = $('#em').value.trim(), password = $('#pw').value;
+    if (!email || password.length < 8) return toast('Enter your email and a password of at least 8 characters.', 'err');
+    const {data, error} = await S.sb.auth.signUp({email, password});
+    if (error) return toast(error.message, 'err');
+    if (data.session) afterLogin(); else toast('Account created. Open the link in the email we sent, then sign in.');
+  };
+  $('#go').onclick = go; $('#pw').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#chg').onclick = () => viewSetup();
+}
+async function boot(){
+  const c = wmsCfg();
+  if (!window.supabase) return toast('Could not load the Supabase library. Check the internet connection and reload.', 'err');
+  S.sb = window.supabase.createClient(c.url, c.key);
+  const {data} = await S.sb.auth.getSession();
+  if (!data.session) return viewLogin();
+  afterLogin();
+}
+async function afterLogin(){
+  const {data:{user}} = await S.sb.auth.getUser(); if (!user) return viewLogin();
+  S.user = user;
+  const {data, error} = await S.sb.from('tenant_users').select('tenant_id, role, tenants(name)').eq('user_id', user.id).eq('is_active', true);
+  if (error) return toast(error.message, 'err');
+  S.tenants = (data || []).map(r => ({id:r.tenant_id, role:r.role, name:r.tenants?.name || 'Company'}));
+  if (!S.tenants.length) return viewNewCompany();
+  const ctx = LS.get('wms.ctx', {});
+  await useTenant(S.tenants.find(t => t.id === ctx.tenant) || S.tenants[0]);
+}
+async function useTenant(t){
+  S.tenant = t.id; S.role = t.role;
+  LS.set('wms.ctx', {...LS.get('wms.ctx', {}), tenant:t.id});
+  await loadLookups();
+  const hash = location.hash.slice(1);
+  openReport(REPORTS.find(r => r.id === hash) || REPORTS[0]);
+}
+async function loadLookups(){
+  const t = {id:S.tenant};
+  const q = (tbl, cols) => S.sb.from(tbl).select(cols).eq('tenant_id', t.id).limit(10000);
+  const [w, l, p, i, u, bc, un] = await Promise.all([q('warehouses', 'id,name,state_code,gstin'), q('locations', 'id,full_code,warehouse_id,is_quarantine'),
+    q('parties', 'id,name,party_type,state_code,is_active'), q('items', 'id,sku,name,uom,mrp,is_active,track_serial,kit_type,is_template'), S.sb.rpc('team_members', {p_tenant:t.id}),
+    q('item_barcodes', 'item_id,barcode'), q('item_units', 'item_id,unit,factor')]);
+  const pl = await q('price_lists', 'id,name,list_type,is_active');
+  const tn = await S.sb.from('tenants').select('id,name,gstin,state_code').eq('id', t.id);
+  const tc = await q('tally_companies', 'gstin,company_name');
+  const uw = await q('user_warehouses', 'user_id,warehouse_id');
+  S.lk = {wh:{}, loc:{}, party:{}, item:{}, user:{}, bc:{}, parties:(p.data || []).filter(x => x.is_active !== false),
+          items:(i.data || []).filter(x => x.is_active !== false), units:un.data || [], whs:w.data || [],
+          pls:pl.data || [], locs:l.data || [], tenant:(tn.data || [])[0] || null, tallyCos:tc.data || [],
+          uwh:(uw.data || []).reduce((a, x) => ((a[x.user_id] = a[x.user_id] || []).push(x.warehouse_id), a), {})};
+  (bc.data || []).forEach(x => { if (!S.lk.bc[x.item_id]) S.lk.bc[x.item_id] = x.barcode; });
+  (w.data || []).forEach(x => S.lk.wh[x.id] = x.name);
+  (l.data || []).forEach(x => S.lk.loc[x.id] = x.full_code);
+  (p.data || []).forEach(x => S.lk.party[x.id] = x.name);
+  (i.data || []).forEach(x => S.lk.item[x.id] = {item_name:x.name, sku:x.sku});
+  (u.data || []).forEach(x => S.lk.user[x.user_id] = x.email);
+}
+async function signOut(){ await S.sb.auth.signOut(); location.reload(); }
+function viewNewCompany(){
+  $('#root').innerHTML = `<div class="card"><h1>Set up your company</h1>
+    <p class="note">If you are joining an existing company, ask its owner to add ${esc(S.user.email)} in Settings, Team, then sign in again.</p>
+    <label for="cn">Company name</label><input id="cn">
+    <label for="cg">GSTIN</label><input id="cg" maxlength="15" style="text-transform:uppercase">
+    <label for="cs">State</label><select id="cs" style="width:100%;height:40px;border:1px solid var(--line);border-radius:6px">${stateOpts().map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select>
+    <label for="wn">First warehouse name</label><input id="wn" placeholder="Main warehouse">
+    <button class="btn primary" id="go">Create company</button>
+    <p class="note"><button class="linkbtn" id="so">Sign out</button></p></div>`;
+  $('#cg').oninput = e => { const g = e.target.value.toUpperCase(); if (/^\d{2}/.test(g)) $('#cs').value = g.slice(0, 2); };
+  $('#so').onclick = signOut;
+  $('#go').onclick = async () => {
+    const name = $('#cn').value.trim(), gstin = $('#cg').value.trim().toUpperCase() || null, st = $('#cs').value, wn = $('#wn').value.trim() || 'Main warehouse';
+    if (!name) return toast('Enter the company name.', 'err');
+    if (gstin && !GSTIN_RE.test(gstin)) return toast('That GSTIN does not look right. It has 15 characters, starting with the 2-digit state code.', 'err');
+    const {data:tid, error} = await S.sb.rpc('create_company', {p_name:name, p_state_code:st, p_gstin:gstin});
+    if (error) return toast(error.message, 'err');
+    const {error:e2} = await S.sb.from('warehouses').insert({tenant_id:tid, code:'W1', name:wn, state_code:st, gstin});
+    if (e2) toast(e2.message, 'err');
+    location.hash = 'items'; afterLogin();
+  };
+}
+
+/* ---------- loading data ---------- */
+async function openReport(rep){
+  S.rep = rep; S.f = LS.get('wms.f.' + rep.id, {}); S.sort = {k:rep.sort[0], dir:rep.sort[1]}; S.q = ''; S.limit = 300; S.pop = null;
+  if (rep.params === 'fy'){ const [a, b] = fyRange(0); S.params = {from:a, to:b}; }
+  else if (rep.params === 'period' || rep.range){ S.params = {from:fyRange(0)[0], to:isoToday()}; }
+  location.hash = rep.id; rememberTab(rep.id);
+  await load();
+}
+async function load(){
+  const rep = S.rep; S.loading = true; S.rows = []; render();
+  if (rep.custom){
+    const [{data, error}, ex] = await Promise.all([S.sb.rpc('dashboard_summary', {p_tenant:S.tenant}), S.sb.rpc('dashboard_extra', {p_tenant:S.tenant})]);
+    if (error) toast(error.message, 'err');
+    S.dash = {...(data || {}), ...((ex && ex.data) || {})}; S.loading = false; render(); return;
+  }
+  try{
+    let rows = [];
+    if (rep.rpc){
+      const args = rep.rpcArgs ? rep.rpcArgs() : rep.params === 'fy' ? {p_tenant:S.tenant, p_fy_start:S.params.from, p_fy_end:S.params.to}
+                                        : {p_tenant:S.tenant, p_from:S.params.from, p_to:S.params.to};
+      const {data, error} = await S.sb.rpc(rep.rpc, args); if (error) throw error; rows = data || [];
+    } else {
+      const size = 1000, cap = 50000;
+      for (let from = 0; from < cap; from += size){
+        let q = S.sb.from(rep.src).select('*').eq(rep.tenantCol || 'tenant_id', S.tenant);
+        if (rep.range){
+          q = q.gte(rep.range, S.params.from).lte(rep.range, rep.range === 'at' ? S.params.to + 'T23:59:59.999+05:30' : S.params.to);
+        }
+        const {data, error} = await q.range(from, from + size - 1); if (error) throw error;
+        rows.push(...data); if (data.length < size) break;
+      }
+    }
+    S.rows = rep.prep ? rows.map(rep.prep) : rows;
+  }catch(e){ toast(e.message || 'Could not load this report.', 'err'); }
+  S.loading = false; render();
+}
+
+/* ---------- filtering ---------- */
+const colOf = k => S.rep.cols.find(c => c.k === k);
+const shown = (c, r) => {
+  const v = r[c.k];
+  if (c.type === 'bool') return v ? 'Yes' : 'No';
+  if (c.type === 'date') return fmtDate(v);
+  if (c.type === 'time') return fmtTime(v);
+  return v === null || v === undefined ? '' : String(v);
+};
+const words = s => String(s || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+function isOn(f){ return !!f && Object.values(f).some(v => Array.isArray(v) ? v.length : v !== '' && v !== null && v !== undefined && v !== false); }
+
+function passCol(c, f, r){
+  if (!isOn(f)) return true;
+  const v = r[c.k];
+  if (c.type === 'text' || c.type === 'cat'){
+    const txt = shown(c, r), low = txt.toLowerCase();
+    if (f.vals && f.vals.length && !f.vals.includes(txt || '(blank)')) return false;
+    if (f.has){ const hit = words(f.has).some(w => low.includes(w)); if (f.not ? hit : !hit) return false; }
+    if (f.blank === 'blank' && txt) return false;
+    if (f.blank === 'filled' && !txt) return false;
+    return true;
+  }
+  if (c.type === 'num' || c.type === 'money'){
+    if (f.min !== '' && f.min !== undefined && (v === null || num(v) < num(f.min))) return false;
+    if (f.max !== '' && f.max !== undefined && (v === null || num(v) > num(f.max))) return false;
+    if (f.nonzero && !num(v)) return false;
+    return true;
+  }
+  if (c.type === 'date' || c.type === 'time'){
+    const d = v ? String(v).slice(0, 10) : '';
+    if (f.from && (!d || d < f.from)) return false;
+    if (f.to && (!d || d > f.to)) return false;
+    return true;
+  }
+  if (c.type === 'bool'){ if (f.v === 'yes' && !v) return false; if (f.v === 'no' && v) return false; }
+  return true;
+}
+function filtered(exceptKey){
+  const cols = S.rep.cols, q = S.q.trim().toLowerCase();
+  return S.rows.filter(r => {
+    for (const c of cols){ if (c.k !== exceptKey && !passCol(c, S.f[c.k], r)) return false; }
+    if (q && !cols.some(c => shown(c, r).toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function sorted(rows){
+  const s = S.sort, c = s && colOf(s.k); if (!c) return rows;
+  const dir = s.dir === 'desc' ? -1 : 1, isNum = c.type === 'num' || c.type === 'money';
+  return rows.slice().sort((a, b) => {
+    const x = a[c.k], y = b[c.k];
+    if (x === y) return 0; if (x === null || x === undefined || x === '') return 1; if (y === null || y === undefined || y === '') return -1;
+    return (isNum ? num(x) - num(y) : String(x).localeCompare(String(y), 'en-IN', {numeric:true})) * dir;
+  });
+}
+// values available in a column, counted over rows that pass the OTHER filters (like Excel)
+function colValues(k){
+  const c = colOf(k), m = new Map();
+  filtered(k).forEach(r => { const v = shown(c, r) || '(blank)'; m.set(v, (m.get(v) || 0) + 1); });
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'en-IN', {numeric:true}));
+}
+
+/* ---------- chips ---------- */
+function chipText(c, f){
+  const money = v => c.type === 'money' ? '₹' + INR.format(num(v)) : QTY.format(num(v));
+  if (c.type === 'text' || c.type === 'cat'){
+    const parts = [];
+    if (f.has) parts.push(`${c.label} ${f.not ? 'does not have' : 'has'} “${f.has}”`);
+    if (f.vals && f.vals.length) parts.push(`${c.label}: ${f.vals.slice(0, 2).join(', ')}${f.vals.length > 2 ? ' +' + (f.vals.length - 2) : ''}`);
+    if (f.blank) parts.push(`${c.label} ${f.blank === 'blank' ? 'is blank' : 'is filled'}`);
+    return parts.join('; ');
+  }
+  if (c.type === 'num' || c.type === 'money'){
+    const has = x => x !== '' && x !== undefined;
+    const r = has(f.min) && has(f.max) ? `${money(f.min)} to ${money(f.max)}` : has(f.min) ? `≥ ${money(f.min)}` : has(f.max) ? `≤ ${money(f.max)}` : '';
+    return [r ? `${c.label} ${r}` : '', f.nonzero ? `${c.label} not zero` : ''].filter(Boolean).join('; ');
+  }
+  if (c.type === 'date' || c.type === 'time')
+    return `${c.label} ${f.from && f.to ? fmtDate(f.from) + ' to ' + fmtDate(f.to) : f.from ? 'from ' + fmtDate(f.from) : 'up to ' + fmtDate(f.to)}`;
+  if (c.type === 'bool') return `${c.label}: ${f.v === 'yes' ? 'Yes' : 'No'}`;
+  return c.label;
+}
+function chipBar(nShown){
+  const chips = S.rep.cols.filter(c => isOn(S.f[c.k])).map(c => [c.k, chipText(c, S.f[c.k])]);
+  if (S.q) chips.unshift(['__q', `Any column has “${S.q}”`]);
+  if (!chips.length) return `<div class="chipbar"><span class="count">${QTY.format(nShown)} rows</span></div>`;
+  return `<div class="chipbar"><span class="count">${QTY.format(nShown)} of ${QTY.format(S.rows.length)} rows</span>` +
+    chips.map(([k, l]) => `<span class="fchip"><button class="fchip-l" data-colf="${k}">${esc(l)}</button><button class="fchip-x" data-chipx="${k}" aria-label="Remove this filter">✕</button></span>`).join('') +
+    `<button class="linkbtn" data-chipall>Clear all</button></div>`;
+}
+
+/* ---------- filter panel ---------- */
+const FUNNEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5h18l-7 8.5V20l-4-2v-4.5z"/></svg>';
+function popHtml(){
+  const p = S.pop; if (!p) return '';
+  const c = colOf(p.k), f = p.draft, qs = String(p.search || '').toLowerCase();
+  let body = '';
+  if (c.type === 'text' || c.type === 'cat'){
+    const vals = colValues(c.k), chosen = f.vals || [];
+    const list = (qs ? vals.filter(([v]) => v.toLowerCase().includes(qs) || chosen.includes(v)) : vals).slice(0, 500);
+    body = (c.type === 'text' ? `<div class="cp-row"><select data-pf="not"><option value="">Has</option><option value="1" ${f.not ? 'selected' : ''}>Does not have</option></select>
+             <input type="text" data-pf="has" value="${esc(f.has || '')}" placeholder="words, separated by commas"></div>
+           <p class="cp-sub">Or only these:</p>` : '') +
+      `<input type="search" data-cpsearch value="${esc(p.search || '')}" placeholder="Search the list" aria-label="Search the list">
+       <div class="cp-list">${list.length ? `<label class="cp-item"><input type="checkbox" data-cpall ${list.every(([v]) => chosen.includes(v)) && chosen.length ? 'checked' : ''}><span><b>Select all shown</b></span></label>` : ''}
+       ${list.map(([v, n]) => `<label class="cp-item"><input type="checkbox" data-pv value="${esc(v)}" ${chosen.includes(v) ? 'checked' : ''}><span>${esc(v)}</span><small>${n}</small></label>`).join('')
+         || `<p class="note" style="padding:8px">${vals.length ? 'Nothing matches that.' : 'No values in this column.'}</p>`}</div>
+       <p class="cp-sub">Blank values</p>
+       <select data-pf="blank"><option value="">Include all</option><option value="blank" ${f.blank === 'blank' ? 'selected' : ''}>Only blank</option><option value="filled" ${f.blank === 'filled' ? 'selected' : ''}>Only filled</option></select>`;
+  } else if (c.type === 'num' || c.type === 'money'){
+    body = `<div class="cp-range"><label>From<input type="text" inputmode="decimal" data-pf="min" value="${esc(f.min ?? '')}" placeholder="any"></label>
+            <label>To<input type="text" inputmode="decimal" data-pf="max" value="${esc(f.max ?? '')}" placeholder="any"></label></div>
+            <label class="cp-item" style="padding:8px 0 0"><input type="checkbox" data-pf="nonzero" ${f.nonzero ? 'checked' : ''}><span>Hide zero</span></label>`;
+  } else if (c.type === 'date' || c.type === 'time'){
+    body = `<div class="cp-quick">${[['month','This month'],['last','Last month'],['quarter','This quarter'],['fy','This year'],['lastfy','Last year']]
+              .map(([v, l]) => `<button class="cp-chip" data-cpquick="${v}">${l}</button>`).join('')}</div>
+            <div class="cp-range"><label>From<input type="date" data-pf="from" value="${esc(f.from || '')}"></label>
+            <label>To<input type="date" data-pf="to" value="${esc(f.to || '')}"></label></div>`;
+  } else if (c.type === 'bool'){
+    body = [['', 'All'], ['yes', 'Yes'], ['no', 'No']].map(([v, l]) =>
+      `<label class="cp-item"><input type="radio" name="cpb" data-pf="v" value="${v}" ${(f.v || '') === v ? 'checked' : ''}><span>${l}</span></label>`).join('');
+  }
+  return `<div class="colpop" id="colpop" role="dialog" aria-label="Filter ${esc(c.label)}">
+    <div class="cp-head"><b>Filter: ${esc(c.label)}</b><button data-cpclose aria-label="Close">✕</button></div>
+    <div class="cp-body">${body}</div>
+    <div class="cp-foot"><button class="linkbtn" data-cpclear>Clear</button><span></span>
+      ${S.auto ? `<button class="btn small primary" data-cpdone>Done</button>` : `<button class="btn small" data-cpclose>Cancel</button><button class="btn small primary" data-cpapply>Apply</button>`}</div>
+    <label class="cp-auto"><input type="checkbox" data-cpauto ${S.auto ? 'checked' : ''}> Apply as I choose</label></div>`;
+}
+function readPop(){
+  const pop = $('#colpop'), p = S.pop; if (!pop || !p) return;
+  const d = {...p.draft};
+  pop.querySelectorAll('[data-pf]').forEach(el => {
+    const k = el.dataset.pf;
+    if (el.type === 'checkbox') d[k] = el.checked;
+    else if (el.type === 'radio'){ if (el.checked) d[k] = el.value; }
+    else d[k] = k === 'not' ? el.value === '1' : el.value.trim();
+  });
+  const vis = [...pop.querySelectorAll('[data-pv]')];
+  if (vis.length){
+    const keep = (d.vals || []).filter(v => !vis.some(el => el.value === v));   // chosen values hidden by the search stay chosen
+    d.vals = keep.concat(vis.filter(el => el.checked).map(el => el.value));
+  }
+  if (d.from && d.to && d.from > d.to){ const x = d.from; d.from = d.to; d.to = x; }
+  p.draft = d;
+}
+function applyPop(close){
+  readPop(); const p = S.pop; if (!p) return;
+  S.f[p.k] = p.draft; if (!isOn(S.f[p.k])) delete S.f[p.k];
+  LS.set('wms.f.' + S.rep.id, S.f); S.limit = 300;
+  if (close) S.pop = null; else S.pop.keep = true;
+  render();
+}
+function placePop(){
+  const pop = $('#colpop'); if (!pop || !S.pop) return;
+  const btn = document.querySelector(`.colf[data-colf="${S.pop.k}"]`);
+  if (!btn){ pop.style.left = '50%'; pop.style.top = '120px'; pop.style.transform = 'translateX(-50%)'; }
+  else {
+    const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    let left = Math.min(window.innerWidth - w - 12, Math.max(12, r.left - 12)), top = r.bottom + 6;
+    if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 6);
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  const lst = pop.querySelector('.cp-list'); if (lst && S.pop.scroll) lst.scrollTop = S.pop.scroll;
+  if (S.pop.focus){ const el = pop.querySelector(S.pop.focus); if (el){ el.focus(); const v = el.value; if (el.setSelectionRange && el.type !== 'date') el.setSelectionRange(v.length, v.length); } S.pop.focus = null; }
+  else if (S.pop.justOpened){ S.pop.justOpened = false; const first = pop.querySelector('input[type=text],input[type=search],input[type=date]'); if (first) first.focus(); }
+}
+
+/* ---------- render ---------- */
+function cell(c, r){
+  const v = r[c.k];
+  if (c.type === 'money') return v === null || v === undefined ? '' : INR.format(num(v));
+  if (c.type === 'num') return v === null || v === undefined ? '' : QTY.format(num(v));
+  if (c.type === 'bool') return v ? 'Yes' : '';
+  const s = shown(c, r);
+  if (/^(Overdue|Missing|Disallowed|Dead|Cancelled|Expired)/.test(s)) return `<span class="tag bad">${esc(s)}</span>`;
+  if (/^(Due in 7 days|Slow|Paid late|Allowed only|Near expiry|Awaiting approval|Partly done|Draft)/.test(s)) return `<span class="tag warn">${esc(s)}</span>`;
+  if (/^(Generated|Paid on time|Within time|Done|Posted|Approved|Billed)$/.test(s)) return `<span class="tag good">${esc(s)}</span>`;
+  return esc(s);
+}
+/* ---------- sidebar menu: sections > screens > tabs ---------- */
+// Each screen is one menu entry; related reports open as tabs inside it.
+const NAV = [
+  ['Home', [
+    {t:'Dashboard', tabs:[['dashboard']]},
+    {t:'Approvals', tabs:[['approvals']]} ]],
+  ['Stock', [
+    {t:'Stock position', tabs:[['bins','By bin'], ['available','Available to sell'], ['summary','Period summary'], ['variants','By variant']]},
+    {t:'Item ledger', tabs:[['ledger']]},
+    {t:'Serial numbers', tabs:[['serials','Serial numbers'], ['serialhist','History']]},
+    {t:'Kits and bundles', tabs:[['kits']]},
+    {t:'Stock alerts', tabs:[['reorder','Reorder'], ['expiry','Expiry'], ['quarantine','Quarantine']]},
+    {t:'Stock analysis', tabs:[['ageing','Ageing'], ['slow','Slow and dead'], ['vendorstock','Vendor-wise']]} ]],
+  ['Warehouse', [
+    {t:'Putaway and refills', tabs:[['putaway','Putaway pending'], ['refills','Bin refills']]},
+    {t:'Pick lists', tabs:[['picks']]},
+    {t:'Stock counts', tabs:[['counts','Counts'], ['countlines','Differences'], ['cycledue','Cycle count plan']]} ]],
+  ['Sales', [
+    {t:'Documents', tabs:[['docs']]},
+    {t:'Orders', tabs:[['orders','Orders'], ['orderlines','Pending lines']]},
+    {t:'Receivables', tabs:[['custinv','Customer invoices'], ['custageing','Customer ageing']]} ]],
+  ['Purchases', [
+    {t:'Payables', tabs:[['bills','Supplier bills'], ['vendorageing','Vendor ageing']]},
+    {t:'MSME compliance', tabs:[['msme','Payment alerts'], ['msmedis','Sec 43B(h) disallowance']]},
+    {t:'Return to supplier', tabs:[['returnable']]} ]],
+  ['GST and Tally', [
+    {t:'GSTR-1', tabs:[['b2b','B2B'], ['b2cl','B2C large'], ['b2cs','B2C small'], ['cdnr','Credit notes (B2B)'],
+                       ['cdnur','Credit notes (B2C)'], ['hsn','HSN summary'], ['docsissued','Documents issued']]},
+    {t:'GSTR-3B', tabs:[['gstr3b']]},
+    {t:'E-way bills', tabs:[['eway']]},
+    {t:'Tally', key:'tally', tabs:[['tallysync','Sync queue'], ['tallylog','History'], ['tallysettings','Ledgers'], ['tallycompanies','Companies']]} ]],
+  ['Masters', [
+    {t:'Items', tabs:[['items','Items'], ['barcodes','Barcodes'], ['units','Units'], ['gstrates','GST rates'],
+                      ['reorderlevels','Reorder levels'], ['homebins','Home bins'], ['kitparts','Kit parts']]},
+    {t:'Parties', tabs:[['parties']]},
+    {t:'Pricing', tabs:[['pricelists','Price lists'], ['prices','Rates'], ['schemes','Schemes']]},
+    {t:'Locations', tabs:[['warehouses','Warehouses'], ['binmaster','Bins'], ['counters','Counters and kiosks']]} ]],
+  ['Settings', [
+    {t:'Company', tabs:[['profile','Profile'], ['settings','Settings'], ['backdate','Back-date limits']]},
+    {t:'Team', tabs:[['team']]},
+    {t:'Approval rules', tabs:[['approvalrules']]},
+    {t:'Employee log', tabs:[['audit']]} ]],
+];
+// Menu entries a role never needs (the database blocks their changes anyway)
+const NAV_HIDE = {storekeeper:['Settings','tally'], cashier:['Settings','Purchases','tally'], manager:['Settings'], accountant:['Settings']};
+
+function navSections(){
+  if (S._nav && S._nav.role === S.role) return S._nav.list;
+  const hide = NAV_HIDE[S.role] || [], seen = new Set();
+  const list = NAV.filter(([g]) => !hide.includes(g)).map(([g, items]) => [g, items
+    .filter(it => !hide.includes(it.key))
+    .map(it => ({...it, section:g, tabs:it.tabs.map(([id, label]) => {
+        const r = REPORTS.find(x => x.id === id); if (!r) return null; seen.add(id);
+        return {id, label:label || r.title, rep:r}; }).filter(Boolean)}))
+    .filter(it => it.tabs.length)]).filter(([, items]) => items.length);
+  const extra = REPORTS.filter(r => !seen.has(r.id) && !NAV.some(([g, its]) => hide.includes(g) && its.some(it => it.tabs.some(t => t[0] === r.id)))
+                                  && !NAV.some(([, its]) => its.some(it => hide.includes(it.key) && it.tabs.some(t => t[0] === r.id))));
+  if (extra.length) list.push(['More', extra.map(r => ({t:r.title, section:'More', tabs:[{id:r.id, label:r.title, rep:r}]}))]);   // nothing ever disappears
+  S._nav = {role:S.role, list};
+  return list;
+}
+const navItemOf = id => { for (const [, items] of navSections()) { const it = items.find(i => i.tabs.some(t => t.id === id)); if (it) return it; } return null; };
+function navOpenSet(){
+  if (!S.navOpen) S.navOpen = new Set(LS.get('wms.nav2', NAV.map(g => g[0]).concat('More')));
+  return S.navOpen;
+}
+function navHtml(rep){
+  const open = navOpenSet(), curItem = navItemOf(rep.id), cur = curItem && curItem.section;
+  if (cur) open.add(cur);
+  const q = (S.navq || '').trim().toLowerCase(), lastTab = LS.get('wms.tab', {});
+  const tabHit = it => it.tabs.find(t => (t.label + ' ' + t.rep.title).toLowerCase().includes(q));
+  const html = navSections().map(([g, items]) => {
+    const links = [];
+    for (const it of items){
+      if (q){
+        // match the screen name, its section, or any of its tabs ("hsn" finds GSTR-1 > HSN summary)
+        const tab = tabHit(it);
+        const whole = it.t.toLowerCase().includes(q);
+        if (!tab && !whole) continue;
+        const target = tab || it.tabs[0];
+        links.push(`<a href="#${target.id}" data-rep="${target.id}">${esc(it.t)}${tab && it.tabs.length > 1 ? `<span class="sub"> › ${esc(tab.label)}</span>` : ''}</a>`);
+      } else {
+        const target = it.tabs.find(t => t.id === lastTab[it.tabs[0].id]) || it.tabs[0], on = it === curItem;
+        links.push(`<a href="#${target.id}" data-rep="${target.id}" class="${on ? 'on' : ''}"${on ? ' aria-current="page"' : ''}>${esc(it.t)}</a>`);
+      }
+    }
+    if (!links.length) return '';
+    const isOpen = q ? true : open.has(g), gid = 'ng-' + g.replace(/\W+/g, '');
+    return `<button class="ng${g === cur ? ' has-on' : ''}" data-grp="${esc(g)}" aria-expanded="${isOpen}" aria-controls="${gid}">
+        <svg class="chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>${esc(g)}</button>
+      <div class="grp" id="${gid}" ${isOpen ? '' : 'hidden'}>${links.join('')}</div>`;
+  }).join('');
+  return html || `<div class="nonav">No screen matches “${esc(S.navq)}”.</div>`;
+}
+function tabsHtml(rep){
+  const it = navItemOf(rep.id);
+  if (!it || it.tabs.length < 2) return '';
+  return `<div class="tabs" role="tablist" aria-label="${esc(it.t)}">${it.tabs.map(t =>
+    `<a href="#${t.id}" role="tab" data-rep="${t.id}" aria-selected="${t.id === rep.id}" class="${t.id === rep.id ? 'on' : ''}">${esc(t.label)}</a>`).join('')}</div>`;
+}
+function rememberTab(id){
+  const it = navItemOf(id); if (!it || it.tabs.length < 2) return;
+  const m = LS.get('wms.tab', {}); m[it.tabs[0].id] = id; LS.set('wms.tab', m);
+}
+function toggleNavGroup(g){
+  const open = navOpenSet();
+  open.has(g) ? open.delete(g) : open.add(g);
+  LS.set('wms.nav2', [...open]);
+  const b = [...document.querySelectorAll('nav [data-grp]')].find(x => x.dataset.grp === g);
+  if (b){ const on = open.has(g); b.setAttribute('aria-expanded', on); document.getElementById(b.getAttribute('aria-controls')).hidden = !on; }
+}
+
+function render(){
+  if (!S.rep) return;
+  const listEl = $('#colpop .cp-list'); if (S.pop && listEl) S.pop.scroll = listEl.scrollTop;
+  const rep = S.rep, t = S.tenants.find(x => x.id === S.tenant) || {};
+  const rows = S.loading ? [] : sorted(filtered()), page = rows.slice(0, S.limit);
+  S.page = page;
+  const navScroll = document.querySelector('nav') ? document.querySelector('nav').scrollTop : 0;
+  const totals = rep.cols.map(c => c.sum ? rows.reduce((a, r) => a + num(r[c.k]), 0) : null);
+  const isNumCol = c => c.type === 'num' || c.type === 'money';
+  const params = rep.params || rep.range ? `
+      <label>${rep.params === 'fy' ? 'Year from' : 'From'}<input type="date" data-param="from" value="${esc(S.params.from)}"></label>
+      <label>To<input type="date" data-param="to" value="${esc(S.params.to)}"></label>` : '';
+
+  $('#root').innerHTML = `<div class="app">
+    <nav aria-label="Reports"><div class="brand">Warehouse Office</div>
+      <div class="co">${esc(t.name || '')}${S.tenants.length > 1 ? `<br><select id="coSel" style="margin-top:6px;width:100%;background:#24345A;color:#fff;border:1px solid #3C4E78;border-radius:6px;height:30px">${S.tenants.map(x => `<option value="${x.id}" ${x.id === S.tenant ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}
+        <br>${esc(S.user?.email)} <button id="so">Sign out</button></div>
+      <input type="search" class="navq" id="navq" placeholder="Find a screen…" aria-label="Find a screen" value="${esc(S.navq || '')}">
+      <div id="navlist">${navHtml(rep)}</div>
+    </nav>
+    <main>
+      <div class="head"><h1>${esc((navItemOf(rep.id) || {}).tabs?.length > 1 ? navItemOf(rep.id).t : rep.title)}</h1>
+        ${tabsHtml(rep)}
+        <div class="tools${rep.custom ? ' hidden' : ''}">${params}
+          <input type="search" id="q" placeholder="Search all columns" value="${esc(S.q)}" aria-label="Search all columns">
+          ${(rep.tools || []).map((x, j) => `<button class="btn" data-tool="${j}">${esc(x.label)}</button>`).join('')}
+          <button class="btn" id="reload">Refresh</button>
+          <button class="btn primary" id="xls" ${rows.length ? '' : 'disabled'}>Export to Excel</button></div>
+        ${rep.note ? `<p>${esc(rep.note)}</p>` : ''}</div>
+      ${rep.custom ? (S.loading ? '<div class="empty">Loading…</div>' : dashHtml()) : ''}
+      ${S.loading || rep.custom ? '' : chipBar(rows.length)}
+      <div class="tablewrap${rep.custom ? ' hidden' : ''}">
+        ${S.loading ? `<div class="empty">Loading…</div>` : `
+        <table><thead><tr>${rep.cols.map(c => {
+          const on = isOn(S.f[c.k]), open = S.pop && S.pop.k === c.k, srt = S.sort && S.sort.k === c.k;
+          return `<th class="${isNumCol(c) ? 'n' : ''}"><span class="colh"><button class="sortbtn" data-sort="${c.k}">${esc(c.label)}${srt ? `<span class="arrow">${S.sort.dir === 'asc' ? '▲' : '▼'}</span>` : ''}</button>
+            <button class="colf${on ? ' on' : ''}${open ? ' open' : ''}" data-colf="${c.k}" aria-label="Filter ${esc(c.label)}" title="Filter ${esc(c.label)}">${FUNNEL}</button></span></th>`;
+        }).join('')}${rep.actions ? '<th><span class="colh">Actions</span></th>' : ''}</tr></thead>
+        <tbody>${page.map((r, ri) => `<tr>${rep.cols.map(c => `<td class="${isNumCol(c) ? 'n' : ''}${isNumCol(c) && num(r[c.k]) < 0 ? ' neg' : ''}">${cell(c, r)}</td>`).join('')}${rep.actions
+            ? `<td>${rep.actions(r).map((a, ai) => a ? `<button class="act${a.warn ? ' warn' : ''}" data-act="${ri}|${ai}">${esc(a.label)}</button>` : '').join('')}</td>` : ''}</tr>`).join('')}</tbody>
+        ${totals.some(x => x !== null) && rows.length ? `<tfoot><tr>${rep.cols.map((c, i) => `<td class="${isNumCol(c) ? 'n' : ''}">${i === 0 ? 'Total' : totals[i] === null ? '' : c.type === 'money' ? INR.format(totals[i]) : QTY.format(totals[i])}</td>`).join('')}${rep.actions ? '<td></td>' : ''}</tr></tfoot>` : ''}
+        </table>
+        ${!rows.length ? (S.rows.length ? `<div class="empty">Nothing matches these filters. <button class="linkbtn" data-chipall>Clear all filters</button></div>` : `<div class="empty">No rows yet for this report.</div>`) : ''}
+        ${rows.length > S.limit ? `<div class="more"><button class="btn" id="more">Show ${Math.min(500, rows.length - S.limit)} more of ${QTY.format(rows.length - S.limit)}</button></div>` : ''}`}
+      </div>
+    </main></div>${popHtml()}`;
+  const nv = document.querySelector('nav'); if (nv) nv.scrollTop = navScroll;
+  placePop();
+}
+
+/* ---------- actions ---------- */
+const draftNo = () => 'DRAFT-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+async function nextNo(prefix, table='documents', col='doc_no', docType=null){
+  let q = S.sb.from(table).select(col).eq('tenant_id', S.tenant).like(col, prefix + '%').order('created_at', {ascending:false}).limit(1);
+  if (docType) q = q.eq('doc_type', docType);
+  const {data, error} = await q; if (error) throw error;
+  const n = parseInt(((data[0]?.[col] || '').match(/(\d+)$/) || [0, 0])[1], 10) + 1;
+  return prefix + String(n).padStart(5, '0');
+}
+async function postDoc(id, no, quiet){
+  let neg = false, warn = false, error = null;
+  for (let i = 0; i < 3; i++){
+    ({error} = await S.sb.rpc('post_document', {p_doc_id:id, p_confirm_negative:neg, p_confirm_warnings:warn}));
+    if (!error) break;
+    if (error.hint === 'WARNINGS_CONFIRM' && !warn && confirm(error.message + '\n\nPost anyway?')){ warn = true; continue; }
+    if (error.hint === 'NEGATIVE_STOCK_CONFIRM' && !neg && confirm(error.message + '\n\nPost anyway?')){ neg = true; continue; }
+    break;
+  }
+  if (error && error.hint === 'APPROVAL_REQUIRED'){ askApproval(error.message, {p_doc:id, p_action:'post'}); return false; }
+  if (error){ toast(`Saved as a draft, not posted. ${error.message}`, 'err'); if (!quiet) load(); return false; }
+  const {data:fin} = await S.sb.from('documents').select('doc_no').eq('id', id).single();
+  toast(`${fin ? fin.doc_no : no} posted.`); if (!quiet) load(); return true;
+}
+async function rpcAct(fn, args, msg){
+  const {data, error} = await S.sb.rpc(fn, args);
+  if (error) return toast(error.message, 'err');
+  toast(msg ? msg(data) : 'Done.'); load();
+}
+async function tableAct(table, id, patch){
+  const {error} = await S.sb.from(table).update(patch).eq('id', id);
+  if (error) return toast(error.message, 'err'); toast('Saved.'); load();
+}
+function closeModal(){ const m = $('.modal-bg'); if (m) m.remove(); }
+function modal(title, body, okLabel, onOk, wide){
+  closeModal();
+  const el = document.createElement('div'); el.className = 'modal-bg';
+  el.innerHTML = `<div class="modal${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><h2>${esc(title)}</h2><div class="mb">${body}</div>
+    <div class="mf"><button class="btn" data-mclose>Cancel</button><button class="btn primary" data-mok>${esc(okLabel)}</button></div></div>`;
+  document.body.appendChild(el);
+  el.querySelector('[data-mclose]').onclick = closeModal;
+  el.querySelector('[data-mok]').onclick = async () => {
+    const b = el.querySelector('[data-mok]'); b.disabled = true;
+    try{ const ok = await onOk(el); if (ok !== false) closeModal(); else b.disabled = false; }
+    catch(e){ toast(e.message || String(e), 'err'); b.disabled = false; }
+  };
+  const f = el.querySelector('input,select,textarea'); if (f) f.focus();
+  return el;
+}
+function askReason(title, label, okLabel, fn){
+  modal(title, `<label for="mr">${esc(label)}</label><textarea id="mr"></textarea>`, okLabel, async el => {
+    const v = el.querySelector('#mr').value.trim(); if (!v){ toast('Enter a reason.', 'err'); return false; }
+    return fn(v);
+  });
+}
+function cancelDoc(r){
+  askReason(`Cancel ${r.doc_no}`, 'Why is it being cancelled? This is saved in the employee log.', 'Cancel document', async reason => {
+    const {error} = await S.sb.rpc('cancel_document', {p_doc_id:r.id, p_reason:reason});
+    if (error && error.hint === 'APPROVAL_REQUIRED'){ closeModal(); askApproval(error.message, {p_doc:r.id, p_action:'cancel', p_note:reason}); return; }
+    if (error){ toast(error.message, 'err'); return false; }
+    toast(`${r.doc_no} cancelled and stock reversed.`); load();
+  });
+}
+async function makeBill(r){
+  const tds = r.doc_type === 'grn' ? prompt('TDS deducted on this bill (leave blank if none)', '') : '';
+  if (tds === null) return;
+  const {error} = await S.sb.rpc('create_bill_from_document', {p_doc_id:r.id, p_tds_section:num(tds) ? '194Q' : null, p_tds_amount:num(tds)});
+  if (error) return toast(error.message, 'err');
+  toast(r.doc_type === 'grn' ? 'Supplier bill created.' : 'Debit note created.');
+}
+function approveCount(r){
+  askReason(`Approve ${r.count_no}`, 'Reason for the adjustment (for example: monthly bin check)', 'Approve and adjust stock', async reason => {
+    const {error} = await S.sb.rpc('approve_count', {p_count:r.id, p_reason:reason});
+    if (error){ toast(error.message, 'err'); return false; }
+    toast(`${r.count_no} approved. Differences posted as adjustments.`); load();
+  });
+}
+async function billPick(r){
+  try{
+    const no = draftNo();
+    const {data:id, error} = await S.sb.rpc('create_invoice_from_pick', {p_pick:r.id, p_doc_no:no});
+    if (error) throw error;
+    await postDoc(id, no);
+  }catch(e){ toast(e.message, 'err'); }
+}
+async function billAll(r){
+  if (!confirm(`Make an invoice for everything pending on ${r.order_no}? Stock will be taken first-in-first-out from any bin. Use pick lists to choose bins.`)) return;
+  try{
+    const no = draftNo();
+    const {data:id, error} = await S.sb.rpc('create_document_from_order', {p_order:r.id, p_doc_no:no});
+    if (error) throw error;
+    await postDoc(id, no);
+  }catch(e){ toast(e.message, 'err'); }
+}
+function receiveAll(r){
+  modal(`Receive ${r.order_no}`, `<p class="note">Makes a goods receipt for everything pending. To record bins, batches or a part delivery, receive it in the phone app instead.</p>
+    <div class="grid2"><div><label for="bn">Supplier bill no.</label><input id="bn"></div><div><label for="bd">Bill date</label><input id="bd" type="date" value="${isoToday()}"></div></div>`,
+    'Receive and post', async el => {
+      const bn = el.querySelector('#bn').value.trim(); if (!bn){ toast("Enter the supplier's bill number.", 'err'); return false; }
+      const no = draftNo();
+      const {data:id, error} = await S.sb.rpc('create_document_from_order', {p_order:r.id, p_doc_no:no, p_party_doc_no:bn, p_party_doc_date:el.querySelector('#bd').value});
+      if (error) throw error;
+      closeModal(); await postDoc(id, no);
+    });
+}
+function moneyForm(kind){
+  const isR = kind === 'receipt', parties = S.lk.parties.filter(p => p.party_type === 'both' || p.party_type === (isR ? 'customer' : 'supplier'));
+  modal(isR ? 'Record customer receipt' : 'Record supplier payment', `
+    <label for="mp">${isR ? 'Customer' : 'Supplier'}</label>
+    <select id="mp"><option value="">Choose</option>${parties.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+    <div class="grid2"><div><label for="md">Date</label><input id="md" type="date" value="${isoToday()}"></div>
+      <div><label for="ma">Amount (Rs)</label><input id="ma" inputmode="decimal"></div>
+      <div><label for="mm">Mode</label><select id="mm">${['bank','upi','cheque','cash','other'].map(m => `<option value="${m}">${m === 'upi' ? 'UPI' : m[0].toUpperCase() + m.slice(1)}</option>`).join('')}</select></div>
+      <div><label for="mref">UTR / cheque no.</label><input id="mref"></div></div>
+    <p class="note">It is set against the oldest ${isR ? 'invoices' : 'bills (MSME bills due first)'} automatically. Anything left over shows as an advance.</p>`,
+    'Save', async el => {
+      const party = el.querySelector('#mp').value, amt = num(el.querySelector('#ma').value);
+      if (!party || amt <= 0){ toast(`Choose the ${isR ? 'customer' : 'supplier'} and enter the amount.`, 'err'); return false; }
+      const row = {tenant_id:S.tenant, party_id:party, amount:amt, mode:el.querySelector('#mm').value, reference:el.querySelector('#mref').value.trim() || null};
+      row[isR ? 'receipt_date' : 'payment_date'] = el.querySelector('#md').value;
+      const {error} = await S.sb.from(isR ? 'customer_receipts' : 'supplier_payments').insert(row);
+      if (error) throw error;
+      const {data:n, error:e2} = await S.sb.rpc(isR ? 'auto_allocate_receipts' : 'auto_allocate', {p_party:party});
+      if (e2) throw e2;
+      toast(`Saved and set against ${n} ${isR ? 'invoice' : 'bill'} part(s).`); load();
+    });
+}
+function orderForm(type){
+  const isP = type === 'purchase', parties = S.lk.parties.filter(p => p.party_type === 'both' || p.party_type === (isP ? 'supplier' : 'customer'));
+  const itemOpts = S.lk.items.map(i => `<option value="${esc(i.sku)} | ${esc(i.name)}"></option>`).join('');
+  const lineRow = () => `<tr><td style="width:44%"><input list="itemlist" data-ol="item" placeholder="Type SKU or name"></td>
+    <td><select data-ol="unit"><option value="">Base unit</option></select></td><td><input data-ol="qty" inputmode="decimal" placeholder="Qty"></td>
+    <td><input data-ol="rate" inputmode="decimal" placeholder="From price list"></td><td><button class="act warn" data-olrm>✕</button></td></tr>`;
+  const el = modal(isP ? 'New purchase order' : 'New sales order', `
+    <datalist id="itemlist">${itemOpts}</datalist>
+    <div class="grid2">
+      <div><label for="op">${isP ? 'Supplier' : 'Customer'}</label><select id="op"><option value="">${isP ? 'Choose' : 'Walk-in / none'}</option>${parties.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+      <div><label for="ow">Warehouse</label><select id="ow">${S.lk.whs.map(w => `<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select></div>
+      <div><label for="od">Order date</label><input id="od" type="date" value="${isoToday()}"></div>
+      <div><label for="oe">Expected by</label><input id="oe" type="date"></div></div>
+    <label>Items</label>
+    <table class="olines" style="width:100%"><tbody id="olb">${lineRow()}${lineRow()}${lineRow()}</tbody></table>
+    <button class="btn small" id="oladd" style="margin-top:6px">Add row</button>
+    <label for="or">Remarks</label><input id="or">
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input type="checkbox" id="oc" checked style="width:auto;height:auto"> Confirm now${isP ? '' : ' and hold stock'}</label>`,
+    'Save order', async el2 => {
+      const party = el2.querySelector('#op').value || null;
+      if (isP && !party){ toast('Choose the supplier.', 'err'); return false; }
+      const lines = [];
+      el2.querySelectorAll('#olb tr').forEach(tr => {
+        const iv = tr.querySelector('[data-ol=item]').value.trim(); if (!iv) return;
+        const it = S.lk.items.find(i => `${i.sku} | ${i.name}` === iv || i.sku === iv);
+        lines.push({it, iv, unit:tr.querySelector('[data-ol=unit]').value || null, qty:num(tr.querySelector('[data-ol=qty]').value), rate:tr.querySelector('[data-ol=rate]').value.trim()});
+      });
+      const bad = lines.find(l => !l.it || l.qty <= 0);
+      if (!lines.length || bad){ toast(bad ? `Check the item and quantity for "${bad.iv}".` : 'Add at least one item.', 'err'); return false; }
+      const no = await nextNo(isP ? 'PO-' : 'SO-', 'orders', 'order_no');
+      const {data:o, error} = await S.sb.from('orders').insert({tenant_id:S.tenant, order_type:type, order_no:no, order_date:el2.querySelector('#od').value,
+        party_id:party, warehouse_id:el2.querySelector('#ow').value, expected_date:el2.querySelector('#oe').value || null,
+        remarks:el2.querySelector('#or').value.trim() || null}).select('id').single();
+      if (error) throw error;
+      const {error:e2} = await S.sb.from('order_lines').insert(lines.map((l, i) => ({order_id:o.id, line_no:i + 1, item_id:l.it.id,
+        unit:l.unit, unit_qty:l.qty, rate:l.rate === '' ? null : num(l.rate)})));
+      if (e2){ await S.sb.from('orders').delete().eq('id', o.id); throw e2; }
+      if (el2.querySelector('#oc').checked){
+        const {data:x, error:e3} = await S.sb.rpc('confirm_order', {p_order:o.id});
+        if (e3) throw e3;
+        toast(isP ? `${no} saved and confirmed.` : `${no} confirmed. Held ${QTY.format(x.reserved)} units; ${QTY.format(x.backorder)} on backorder.`);
+      } else toast(`${no} saved as draft.`);
+      load();
+    }, true);
+  const tb = el.querySelector('#olb');
+  const unitsFor = iv => { const it = S.lk.items.find(i => `${i.sku} | ${i.name}` === iv || i.sku === iv); if (!it) return '';
+    return `<option value="">${esc(it.uom)}</option>` + S.lk.units.filter(u => u.item_id === it.id).map(u => `<option value="${esc(u.unit)}">${esc(u.unit)} (${QTY.format(u.factor)} ${esc(it.uom)})</option>`).join(''); };
+  tb.addEventListener('change', e => { if (e.target.dataset.ol === 'item') e.target.closest('tr').querySelector('[data-ol=unit]').innerHTML = unitsFor(e.target.value.trim()); });
+  tb.addEventListener('click', e => { if (e.target.matches('[data-olrm]')) e.target.closest('tr').remove(); });
+  el.querySelector('#oladd').onclick = () => tb.insertAdjacentHTML('beforeend', lineRow());
+}
+
+/* ---------- master data ---------- */
+const GSTIN_RE = /^[0-9]{2}[A-Z0-9]{13}$/;
+const STATES = [['01','Jammu and Kashmir'],['02','Himachal Pradesh'],['03','Punjab'],['04','Chandigarh'],['05','Uttarakhand'],['06','Haryana'],
+  ['07','Delhi'],['08','Rajasthan'],['09','Uttar Pradesh'],['10','Bihar'],['11','Sikkim'],['12','Arunachal Pradesh'],['13','Nagaland'],['14','Manipur'],
+  ['15','Mizoram'],['16','Tripura'],['17','Meghalaya'],['18','Assam'],['19','West Bengal'],['20','Jharkhand'],['21','Odisha'],['22','Chhattisgarh'],
+  ['23','Madhya Pradesh'],['24','Gujarat'],['26','Dadra and Nagar Haveli and Daman and Diu'],['27','Maharashtra'],['29','Karnataka'],['30','Goa'],
+  ['31','Lakshadweep'],['32','Kerala'],['33','Tamil Nadu'],['34','Puducherry'],['35','Andaman and Nicobar Islands'],['36','Telangana'],
+  ['37','Andhra Pradesh'],['38','Ladakh'],['97','Other Territory']];
+const stateOpts = () => STATES.map(([c, n]) => [c, `${c} ${n}`]);
+const stateName = c => (STATES.find(x => x[0] === c) || [c, c || ''])[1];
+const UQC = ['NOS','PCS','KGS','GMS','LTR','MLT','MTR','CMS','BOX','PAC','SET','PRS','DOZ','BAG','BTL','CAN','CTN','ROL','TON','SQM','SQF','UNT','OTH'];
+const NEG_LABEL = {block:'Block', warn:'Warn and confirm', allow_with_approval:'Needs manager approval', allow:'Allow'};
+const ROLE_LABEL = {owner:'Owner', admin:'Admin', manager:'Manager', accountant:'Accountant', storekeeper:'Storekeeper', cashier:'Cashier'};
+const opt = o => Object.entries(o);
+const whOpts = () => S.lk.whs.map(w => [w.id, w.name]);
+const binOpts = () => S.lk.locs.map(l => [l.id, `${l.full_code} (${S.lk.wh[l.warehouse_id] || ''})`]);
+const partyOpts = type => S.lk.parties.filter(p => !type || p.party_type === 'both' || p.party_type === type).map(p => [p.id, p.name]);
+
+/* field: {k, label, type:text|num|int|date|select|check|item|textarea, options, req, def, help, upper, createOnly, virtual} */
+const CRUD = {
+  items:{table:'items', noun:'item', fields:[
+    {k:'sku', label:'SKU / item code', req:true, upper:true}, {k:'name', label:'Item name', req:true},
+    {k:'hsn_code', label:'HSN code', req:true, help:'4 to 8 digits'}, {k:'uom', label:'Base unit (GST UQC)', type:'select', options:() => UQC.map(u => [u, u]), def:'NOS'},
+    {k:'mrp', label:'MRP (Rs)', type:'num'}, {k:'std_purchase_price', label:'Standard purchase price (Rs)', type:'num'},
+    {k:'default_discount_pct', label:'Default sales discount %', type:'num', def:0},
+    {k:'_gst', label:'GST rate %', type:'num', req:true, createOnly:true, virtual:true},
+    {k:'_gst_from', label:'GST rate applies from', type:'date', createOnly:true, virtual:true, def:'2017-07-01'},
+    {k:'_barcode', label:'Barcode (optional)', createOnly:true, virtual:true},
+    {k:'track_batch', label:'Track batch numbers', type:'check'}, {k:'track_expiry', label:'Track expiry (sell earliest expiry first)', type:'check'},
+    {k:'track_serial', label:'Track serial numbers (one per unit)', type:'check'},
+    {k:'kit_type', label:'Kit', type:'select', options:() => [['', 'Not a kit'],['bundle','Bundle: parts leave stock when sold'],['assembly','Assembled kit: built from parts, holds stock']]},
+    {k:'negative_stock_mode', label:'Negative stock', type:'select', options:() => [['', 'Use company setting'], ...opt(NEG_LABEL)]},
+    {k:'tally_stock_item', label:'Tally stock item name'}, {k:'is_active', label:'Active', type:'check', def:true}],
+    check:v => (!/^[0-9]{4,8}$/.test(v.hsn_code) && 'HSN code must be 4 to 8 digits.') || (v._gst !== undefined && (v._gst < 0 || v._gst > 100) && 'Enter a valid GST rate.'),
+    after:async (row, v, isNew) => {
+      if (!isNew) return;
+      const {error} = await S.sb.from('item_gst_rates').insert({tenant_id:S.tenant, item_id:row.id, effective_from:v._gst_from || '2017-07-01', gst_rate:v._gst});
+      if (error) throw error;
+      if (v._barcode){ const {error:e2} = await S.sb.from('item_barcodes').insert({tenant_id:S.tenant, item_id:row.id, barcode:v._barcode}); if (e2) throw e2; }
+    }},
+  item_gst_rates:{table:'item_gst_rates', noun:'GST rate change', addOnly:true, fields:[
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'effective_from', label:'Applies from', type:'date', req:true},
+    {k:'gst_rate', label:'GST rate %', type:'num', req:true}, {k:'cess_rate', label:'Cess %', type:'num', def:0},
+    {k:'notification', label:'Notification reference'}]},
+  item_barcodes:{table:'item_barcodes', noun:'barcode', fields:[
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'barcode', label:'Barcode', req:true},
+    {k:'pack_qty', label:'Units per scan', type:'num', def:1, help:'For a carton barcode that holds 12 pieces, enter 12.'}]},
+  item_units:{table:'item_units', noun:'unit', fields:[
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'unit', label:'Unit', type:'select', options:() => UQC.map(u => [u, u]), req:true},
+    {k:'factor', label:'Base units in one', type:'num', req:true, help:'BOX of 12 pieces: 12'}]},
+  item_reorder_levels:{table:'item_reorder_levels', noun:'reorder level', key:['item_id','warehouse_id'], upsert:true, fields:[
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'warehouse_id', label:'Warehouse', type:'select', options:whOpts, req:true},
+    {k:'min_level', label:'Minimum level', type:'num', req:true}, {k:'reorder_qty', label:'Quantity to reorder', type:'num', req:true}]},
+  parties:{table:'parties', noun:'party', fields:[
+    {k:'name', label:'Name', req:true}, {k:'party_type', label:'Type', type:'select', options:() => [['supplier','Supplier'],['customer','Customer'],['both','Both']], def:'supplier'},
+    {k:'gstin', label:'GSTIN', upper:true, help:'The state fills in from the GSTIN.'}, {k:'state_code', label:'State', type:'select', options:() => [['', 'Choose'], ...stateOpts()]},
+    {k:'is_msme', label:'Registered MSME (Udyam)', type:'check'},
+    {k:'msme_category', label:'MSME category', type:'select', options:() => [['', 'Not MSME'],['micro','Micro'],['small','Small'],['medium','Medium']]},
+    {k:'msme_activity', label:'MSME activity', type:'select', options:() => [['', 'Not known'],['manufacturing','Manufacturing'],['services','Services'],['trading','Trading']]},
+    {k:'udyam_no', label:'Udyam number', upper:true},
+    {k:'address1', label:'Address line 1'}, {k:'address2', label:'Address line 2'}, {k:'city', label:'City'}, {k:'pincode', label:'PIN code'},
+    {k:'phone', label:'Phone'}, {k:'email', label:'Email'},
+    {k:'has_written_agreement', label:'Credit period agreed in writing', type:'check'},
+    {k:'credit_days', label:'Credit days', type:'int'}, {k:'credit_limit', label:'Credit limit (Rs)', type:'num'},
+    {k:'credit_control', label:'When the limit is crossed', type:'select', options:() => [['none','No check'],['warn','Warn at billing'],['block','Block billing']], def:'none'},
+    {k:'price_list_id', label:'Price list', type:'select', options:() => [['', 'None'], ...S.lk.pls.filter(p => p.is_active).map(p => [p.id, p.name])]},
+    {k:'tally_ledger', label:'Tally ledger name'}, {k:'is_active', label:'Active', type:'check', def:true}],
+    check:v => (v.gstin && !GSTIN_RE.test(v.gstin) && 'That GSTIN does not look right.') || (v.gstin && v.state_code && v.gstin.slice(0, 2) !== v.state_code && 'The state does not match the GSTIN.')
+               || (v.is_msme && !v.msme_category && 'Choose the MSME category.')},
+  warehouses:{table:'warehouses', noun:'warehouse', fields:[
+    {k:'code', label:'Code', req:true, upper:true}, {k:'name', label:'Name', req:true},
+    {k:'gstin', label:'GSTIN of this location', upper:true}, {k:'state_code', label:'State', type:'select', options:stateOpts, req:true, def:'09'},
+    {k:'address', label:'Address', type:'textarea'}, {k:'city', label:'City'}, {k:'pincode', label:'PIN code'},
+    {k:'series_code', label:'Document series letter (e.g. M for Meerut)', upper:true, help:'Used when you have more than one GSTIN: MINV/2627/00001. One or two letters.'},
+    {k:'tally_godown', label:'Godown name in Tally (blank = warehouse name)'},
+    {k:'quarantine_location_id', label:'Quarantine bin (damaged returns go here)', type:'select',
+     options:(row) => [['', 'None'], ...S.lk.locs.filter(l => row && l.warehouse_id === row.id).map(l => [l.id, l.full_code])]},
+    {k:'is_active', label:'Active', type:'check', def:true}],
+    check:v => (v.gstin && !GSTIN_RE.test(v.gstin) && 'That GSTIN does not look right.') || (v.pincode && !/^[0-9]{6}$/.test(v.pincode) && 'PIN code has 6 digits.')},
+  locations:{table:'locations', noun:'bin', fields:[
+    {k:'warehouse_id', label:'Warehouse', type:'select', options:whOpts, req:true}, {k:'full_code', label:'Bin code', req:true, upper:true, help:'For example A-R03-S2-B07. This is printed on the label.'},
+    {k:'capacity_units', label:'Holds up to (units, optional)', type:'num', help:'Used by putaway to avoid overfilling.'},
+    {k:'loc_type', label:'Type', type:'select', options:() => [['bin','Bin'],['shelf','Shelf'],['rack','Rack'],['zone','Zone']], def:'bin'},
+    {k:'is_quarantine', label:'Quarantine bin (stock here is never sold)', type:'check'}, {k:'is_active', label:'Active', type:'check', def:true}],
+    before:v => { v.code = v.full_code.split('-').pop(); }},
+  sales_points:{table:'sales_points', noun:'counter', fields:[
+    {k:'name', label:'Name', req:true}, {k:'sp_type', label:'Type', type:'select', options:() => [['store','Store counter'],['kiosk','Kiosk'],['online','Online']], def:'store'},
+    {k:'warehouse_id', label:'Sells stock from', type:'select', options:whOpts, req:true}, {k:'is_active', label:'Active', type:'check', def:true}]},
+  price_lists:{table:'price_lists', noun:'price list', fields:[
+    {k:'name', label:'Name', req:true}, {k:'list_type', label:'For', type:'select', options:() => [['sales','Customers'],['purchase','Suppliers']], def:'sales'},
+    {k:'is_active', label:'Active', type:'check', def:true}]},
+  price_list_items:{table:'price_list_items', noun:'rate', fields:[
+    {k:'price_list_id', label:'Price list', type:'select', options:() => S.lk.pls.map(p => [p.id, p.name]), req:true},
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'effective_from', label:'Applies from', type:'date', req:true, def:isoToday},
+    {k:'min_qty', label:'From quantity (base unit)', type:'num', def:0}, {k:'rate', label:'Rate per base unit (blank keeps MRP)', type:'num'},
+    {k:'discount_pct', label:'Discount %', type:'num'}],
+    check:v => v.rate === null && v.discount_pct === null && 'Enter a rate, a discount, or both.'},
+  schemes:{table:'schemes', noun:'scheme', fields:[
+    {k:'name', label:'Scheme name', req:true}, {k:'item_id', label:'On buying', type:'item', req:true},
+    {k:'buy_qty', label:'Buy quantity', type:'num', req:true}, {k:'free_qty', label:'Free quantity', type:'num', req:true},
+    {k:'free_item_id', label:'Free item (blank = same item)', type:'item'},
+    {k:'party_id', label:'Only for this customer', type:'select', options:() => [['', 'All customers'], ...partyOpts('customer')]},
+    {k:'valid_from', label:'Valid from', type:'date', req:true, def:isoToday}, {k:'valid_to', label:'Valid to', type:'date'},
+    {k:'is_active', label:'Active', type:'check', def:true}]},
+  tenants:{table:'tenants', noun:'company profile', key:['id'], fields:[
+    {k:'name', label:'Company name', req:true}, {k:'legal_name', label:'Legal name (as on GST registration)'}, {k:'trade_name', label:'Trade name'},
+    {k:'gstin', label:'Main GSTIN', upper:true}, {k:'state_code', label:'State', type:'select', options:stateOpts, req:true},
+    {k:'pan', label:'PAN', upper:true}, {k:'address1', label:'Address line 1'}, {k:'address2', label:'Address line 2'},
+    {k:'city', label:'City'}, {k:'pincode', label:'PIN code'}, {k:'phone', label:'Phone'}, {k:'email', label:'Email'},
+    {k:'bank_name', label:'Bank name'}, {k:'bank_account', label:'Bank account number'}, {k:'bank_ifsc', label:'IFSC', upper:true},
+    {k:'invoice_terms', label:'Terms printed on invoices', type:'textarea'},
+    {k:'einvoice_applicable', label:'E-invoicing applies (turnover above Rs 5 crore)', type:'check'}],
+    check:v => (v.gstin && !GSTIN_RE.test(v.gstin) && 'That GSTIN does not look right.') || (v.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v.pan) && 'That PAN does not look right.')
+               || (v.pincode && !/^[0-9]{6}$/.test(v.pincode) && 'PIN code has 6 digits.') || (v.bank_ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.bank_ifsc) && 'That IFSC does not look right.')},
+  tally_settings:{table:'tally_settings', noun:'Tally settings', key:['tenant_id'], fields:[
+    {k:'sync_from', label:'Send entries dated from', type:'date'},
+    {k:'sales_ledger', label:'Sales ledger ({rate} = GST rate)', req:true}, {k:'purchase_ledger', label:'Purchase ledger ({rate} = GST rate)', req:true},
+    {k:'out_cgst', label:'Output CGST ledger', req:true}, {k:'out_sgst', label:'Output SGST ledger', req:true},
+    {k:'out_igst', label:'Output IGST ledger', req:true}, {k:'out_cess', label:'Output cess ledger', req:true},
+    {k:'in_cgst', label:'Input CGST ledger', req:true}, {k:'in_sgst', label:'Input SGST ledger', req:true},
+    {k:'in_igst', label:'Input IGST ledger', req:true}, {k:'in_cess', label:'Input cess ledger', req:true},
+    {k:'walkin_ledger', label:'Party for counter sales without a customer', req:true},
+    {k:'cash_ledger', label:'Cash ledger', req:true}, {k:'bank_ledger', label:'Bank ledger (receipts and payments)', req:true},
+    {k:'debtors_group', label:'Group for customers', req:true}, {k:'creditors_group', label:'Group for suppliers', req:true},
+    {k:'branch_ledger_prefix', label:'Branch ledger name starts with', req:true},
+    {k:'vt_sales', label:'Sales voucher type', req:true}, {k:'vt_purchase', label:'Purchase voucher type', req:true},
+    {k:'vt_credit_note', label:'Credit note voucher type', req:true}, {k:'vt_debit_note', label:'Debit note voucher type', req:true},
+    {k:'vt_stock_journal', label:'Stock journal voucher type', req:true}, {k:'vt_receipt', label:'Receipt voucher type', req:true},
+    {k:'vt_payment', label:'Payment voucher type', req:true}]},
+  tally_companies:{table:'tally_companies', noun:'Tally company', key:['tenant_id','gstin'], upsert:true, fields:[
+    {k:'gstin', label:'GSTIN', type:'select', req:true, options:() => [...new Set([S.lk.tenant && S.lk.tenant.gstin, ...S.lk.whs.map(w => w.gstin)].filter(Boolean))].map(g => [g, g])},
+    {k:'company_name', label:'Company name in TallyPrime', req:true}]},
+  item_bins:{table:'item_bins', noun:'home bin', key:['item_id','location_id'], upsert:true, fields:[
+    {k:'item_id', label:'Item', type:'item', req:true}, {k:'location_id', label:'Bin', type:'select', options:binOpts, req:true},
+    {k:'min_qty', label:'Refill when down to', type:'num'}, {k:'max_qty', label:'Fill up to (bin holds)', type:'num'}],
+    check:v => v.min_qty !== null && v.max_qty !== null && v.min_qty !== undefined && num(v.min_qty) >= num(v.max_qty) && 'The minimum must be below the maximum.'},
+  kit_components:{table:'kit_components', noun:'kit part', key:['kit_item_id','component_item_id'], upsert:true, fields:[
+    {k:'kit_item_id', label:'Kit', type:'item', req:true}, {k:'component_item_id', label:'Part', type:'item', req:true},
+    {k:'qty', label:'Quantity in one kit', type:'num', req:true, def:1}]},
+  approval_rules:{table:'approval_rules', noun:'approval rules', key:['tenant_id'], fields:[
+    {k:'discount_above_pct', label:'Sales discount above (%)', type:'num'},
+    {k:'below_cost_needs_approval', label:'Selling below cost needs approval', type:'check'},
+    {k:'credit_limit_needs_approval', label:'Billing over the credit limit needs approval', type:'check'},
+    {k:'adjustment_above_value', label:'Stock adjustment above (Rs)', type:'num'},
+    {k:'purchase_order_above_value', label:'Purchase order above (Rs)', type:'num'},
+    {k:'cancel_needs_approval', label:'Cancelling a posted entry needs approval', type:'check'},
+    {k:'approver_roles', label:'Who approves', type:'select', options:() => [['owner,admin,manager','Owner, admin or manager'],['owner,admin','Owner or admin'],['owner','Owner only']]}],
+    before:v => { v.approver_roles = String(v.approver_roles || 'owner,admin,manager').split(','); }},
+  cycle_count_plans:{table:'cycle_count_plans', noun:'cycle count plan', key:['warehouse_id'], upsert:true, fields:[
+    {k:'warehouse_id', label:'Warehouse', type:'select', options:whOpts, req:true},
+    {k:'a_days', label:'Count A items every (days)', type:'int', def:30, req:true}, {k:'b_days', label:'Count B items every (days)', type:'int', def:60, req:true},
+    {k:'c_days', label:'Count C items every (days)', type:'int', def:90, req:true}, {k:'items_per_count', label:'Items in one cycle count', type:'int', def:25, req:true},
+    {k:'is_active', label:'Plan is on', type:'check', def:true}]},
+  company_settings:{table:'company_settings', noun:'settings', key:['tenant_id'], fields:[
+    {k:'books_lock_date', label:'Books locked up to (nothing on or before this date)', type:'date'},
+    {k:'costing_method', label:'Stock valuation', type:'select', options:() => [['fifo','FIFO (first in, first out)'],['weighted_avg','Weighted average']],
+     help:'Changing it applies from the next receipt. Decide at the start of a year.'},
+    {k:'negative_stock_mode', label:'When stock would go negative', type:'select', options:() => opt(NEG_LABEL)},
+    {k:'near_expiry_days', label:'Warn when a batch expires within (days)', type:'int', req:true},
+    {k:'po_excess_pct', label:'Allowed receipt over purchase order (%)', type:'num', req:true},
+    {k:'warn_below_cost', label:'Warn when selling below cost', type:'check'},
+    {k:'timezone', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
+  role_backdate_limits:{table:'role_backdate_limits', noun:'limit', key:['tenant_id','role'], upsert:true, fields:[
+    {k:'role', label:'Role', type:'select', options:() => opt(ROLE_LABEL), req:true},
+    {k:'max_days_back', label:'Days back allowed (0 = today only)', type:'int', req:true}]}
+};
+
+function fieldHtml(f, v, row, locked){
+  const id = 'f_' + f.k, val = v === null || v === undefined ? '' : v;
+  if (locked) return `<label for="${id}">${esc(f.label)}</label><input id="${id}" value="${esc(f.type === 'select' ? ((typeof f.options === 'function' ? f.options(row) : f.options).find(o => String(o[0]) === String(val)) || [val, val])[1] : val)}" disabled data-raw="${esc(val)}">`;
+  const help = f.help ? `<div class="note" style="margin-top:2px">${esc(f.help)}</div>` : '';
+  if (f.type === 'check') return `<label style="display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--ink)"><input type="checkbox" id="${id}" ${val ? 'checked' : ''} style="width:auto;height:auto"> ${esc(f.label)}</label>`;
+  const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' *' : ''}</label>`;
+  if (f.type === 'select'){
+    const o = typeof f.options === 'function' ? f.options(row) : f.options;
+    return lab + `<select id="${id}">${o.map(([a, b]) => `<option value="${esc(a)}" ${String(a) === String(val) ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>` + help;
+  }
+  if (f.type === 'textarea') return lab + `<textarea id="${id}">${esc(val)}</textarea>` + help;
+  if (f.type === 'item'){
+    const it = S.lk.items.find(i => i.id === val);
+    return lab + `<input id="${id}" list="itemlist" value="${esc(it ? it.sku + ' | ' + it.name : '')}" placeholder="Type SKU or name">` + help;
+  }
+  const type = f.type === 'date' ? 'date' : 'text', mode = f.type === 'num' || f.type === 'int' ? ' inputmode="decimal"' : '';
+  return lab + `<input id="${id}" type="${type}"${mode} value="${esc(val)}"${f.upper ? ' style="text-transform:uppercase"' : ''}>` + help;
+}
+function readField(f, el){
+  const x = el.querySelector('#f_' + f.k); if (!x) return undefined;
+  if (x.disabled && x.dataset.raw !== undefined) return x.dataset.raw;
+  if (f.type === 'check') return x.checked;
+  let v = x.value.trim();
+  if (f.type === 'item'){ if (!v) return null; const it = S.lk.items.find(i => `${i.sku} | ${i.name}` === v || i.sku.toUpperCase() === v.toUpperCase()); return it ? it.id : '__bad'; }
+  if (v === '') return null;
+  if (f.upper) v = v.toUpperCase();
+  if (f.type === 'num') return isFinite(+v) ? +v : NaN;
+  if (f.type === 'int') return /^-?\d+$/.test(v) ? parseInt(v, 10) : NaN;
+  return v;
+}
+function editForm(key, row, preset){
+  const cfg = CRUD[key], isNew = !row;
+  const fields = cfg.fields.filter(f => isNew || !f.createOnly);
+  const base = row || {};
+  const valOf = f => f.k in (preset || {}) ? preset[f.k] : isNew ? (typeof f.def === 'function' ? f.def() : f.def) : base[f.k];
+  const el = modal(`${isNew ? 'Add' : 'Edit'} ${cfg.noun}`, `<datalist id="itemlist">${S.lk.items.map(i => `<option value="${esc(i.sku)} | ${esc(i.name)}"></option>`).join('')}</datalist>
+    <div class="grid2">${fields.map(f => `<div${f.type === 'textarea' ? ' style="grid-column:1/-1"' : ''}>${fieldHtml(f, valOf(f), row, !isNew && (cfg.key || []).includes(f.k))}</div>`).join('')}</div>`,
+    isNew ? `Add ${cfg.noun}` : 'Save', async el2 => {
+      const v = {};
+      for (const f of fields){
+        const x = readField(f, el2);
+        if (x === '__bad'){ toast(`Pick the ${f.label.toLowerCase()} from the list.`, 'err'); return false; }
+        if (typeof x === 'number' && isNaN(x)){ toast(`${f.label} must be a number.`, 'err'); return false; }
+        if (f.req && (x === null || x === undefined || x === '')){ toast(`Enter ${f.label.toLowerCase()}.`, 'err'); return false; }
+        v[f.k] = x;
+      }
+      const bad = cfg.check && cfg.check(v); if (bad){ toast(bad, 'err'); return false; }
+      if (cfg.before) cfg.before(v);
+      const data = Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('_')));
+      let res;
+      if (isNew || cfg.upsert){
+        data.tenant_id = S.tenant;
+        res = cfg.upsert ? await S.sb.from(cfg.table).upsert(data, {onConflict:(cfg.key || ['id']).join(',')}).select()
+                         : await S.sb.from(cfg.table).insert(data).select();
+      } else {
+        let q = S.sb.from(cfg.table).update(data);
+        (cfg.key || ['id']).forEach(k => { q = q.eq(k, base[k]); });
+        res = await q.select();
+      }
+      if (res.error){ toast(friendlyDbError(res.error), 'err'); return false; }
+      if (!res.data || !res.data.length){ toast('Not saved. Your role cannot change this. Ask an owner, admin, manager or accountant.', 'err'); return false; }
+      if (cfg.after) await cfg.after(res.data[0], v, isNew);
+      toast(`${cfg.noun[0].toUpperCase() + cfg.noun.slice(1)} saved.`);
+      await loadLookups(); load();
+    }, true);
+  const g = el.querySelector('#f_gstin'), st = el.querySelector('#f_state_code');
+  if (g && st) g.addEventListener('input', () => { const x = g.value.toUpperCase(); if (/^\d{2}/.test(x) && st.querySelector(`option[value="${x.slice(0, 2)}"]`)) st.value = x.slice(0, 2); });
+}
+function friendlyDbError(e){
+  const m = e.message || '';
+  if (e.code === '23505') return 'This already exists. Use a different code or number, or edit the existing one.';
+  if (/check constraint/.test(m)) return 'One of the values is not allowed. Check codes such as GSTIN, HSN and PIN.';
+  if (/row-level security/.test(m)) return 'Your role cannot change this. Ask an owner, admin, manager or accountant.';
+  return m;
+}
+async function removeRow(key, r){
+  const cfg = CRUD[key];
+  if (!confirm(`Remove this ${cfg.noun}?`)) return;
+  let q = S.sb.from(cfg.table).delete();
+  (cfg.key || ['id']).forEach(k => { q = q.eq(k, r[k]); });
+  const {data, error} = await q.select();
+  if (error) return toast(friendlyDbError(error), 'err');
+  if (!data.length) return toast('Not removed. Your role cannot change this.', 'err');
+  toast('Removed.'); await loadLookups(); load();
+}
+function binGenerator(){
+  modal('Create many bins', `<p class="note">Makes every combination, such as A-R01-S1-B01 to B-R05-S4-B10.</p>
+    <label for="gw">Warehouse</label><select id="gw">${whOpts().map(([a, b]) => `<option value="${a}">${esc(b)}</option>`).join('')}</select>
+    <div class="grid2">
+      <div><label for="gz">Zones (letters, comma separated)</label><input id="gz" value="A"></div>
+      <div><label for="gr">Racks from–to</label><input id="gr" value="1-5"></div>
+      <div><label for="gs">Shelves from–to</label><input id="gs" value="1-4"></div>
+      <div><label for="gb">Bins per shelf from–to (blank = shelf is the bin)</label><input id="gb" value=""></div></div>
+    <p class="note" id="gcount"></p>`, 'Create bins', async el => {
+      const codes = binCodes(el); if (!codes.length){ toast('Check the ranges.', 'err'); return false; }
+      if (codes.length > 2000){ toast('That makes more than 2,000 bins. Create them in parts.', 'err'); return false; }
+      const wh = el.querySelector('#gw').value;
+      const existing = new Set(S.lk.locs.filter(l => l.warehouse_id === wh).map(l => l.full_code));
+      const rows = codes.filter(c => !existing.has(c)).map(c => ({tenant_id:S.tenant, warehouse_id:wh, full_code:c, code:c.split('-').pop(), loc_type:'bin'}));
+      for (let i = 0; i < rows.length; i += 500){
+        const {error} = await S.sb.from('locations').insert(rows.slice(i, i + 500));
+        if (error){ toast(friendlyDbError(error), 'err'); return false; }
+      }
+      toast(`${rows.length} bins created${codes.length > rows.length ? `, ${codes.length - rows.length} already existed` : ''}.`);
+      await loadLookups(); load();
+    });
+  const upd = () => { const el = $('.modal'); const n = binCodes(el); el.querySelector('#gcount').textContent = n.length ? `${n.length} bins, from ${n[0]} to ${n[n.length - 1]}` : 'Check the ranges.'; };
+  $('.modal').addEventListener('input', upd); upd();
+}
+function binCodes(el){
+  const rng = s => { const m = String(s).trim().match(/^(\d+)\s*-\s*(\d+)$/) || String(s).trim().match(/^(\d+)$/);
+    if (!m) return null; const a = +m[1], b = +(m[2] || m[1]); if (b < a || b - a > 200) return null; return Array.from({length:b - a + 1}, (_, i) => a + i); };
+  const zones = el.querySelector('#gz').value.split(',').map(z => z.trim().toUpperCase()).filter(Boolean);
+  const racks = rng(el.querySelector('#gr').value), shelves = rng(el.querySelector('#gs').value);
+  const binsTxt = el.querySelector('#gb').value.trim(), bins = binsTxt ? rng(binsTxt) : [null];
+  if (!zones.length || !racks || !shelves || !bins) return [];
+  const pad = n => String(n).padStart(2, '0'), out = [];
+  zones.forEach(z => racks.forEach(r => shelves.forEach(s => bins.forEach(b => out.push(`${z}-R${pad(r)}-S${s}${b === null ? '' : '-B' + pad(b)}`)))));
+  return out;
+}
+function teamForm(r){
+  const roles = opt(ROLE_LABEL).filter(([k]) => k !== 'owner' || S.role === 'owner');
+  modal(r ? `Change role for ${r.email}` : 'Add team member', `
+    ${r ? '' : '<label for="te">Email they signed up with</label><input id="te" type="email">'}
+    <label for="tr">Role</label><select id="tr">${roles.map(([k, l]) => `<option value="${k}" ${r && r.role === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <p class="note">Storekeepers and cashiers use the phone app and cannot change masters. Managers approve counts. Only owners and admins manage the team and settings.</p>`,
+    r ? 'Save' : 'Add', async el => {
+      const role = el.querySelector('#tr').value;
+      if (r){
+        const {data, error} = await S.sb.from('tenant_users').update({role}).eq('tenant_id', S.tenant).eq('user_id', r.user_id).select();
+        if (error){ toast(error.message, 'err'); return false; }
+        if (!data.length){ toast('Only an owner or admin can change roles.', 'err'); return false; }
+      } else {
+        const email = el.querySelector('#te').value.trim(); if (!email){ toast('Enter the email.', 'err'); return false; }
+        const {error} = await S.sb.rpc('add_team_member', {p_tenant:S.tenant, p_email:email, p_role:role});
+        if (error){ toast(error.message, 'err'); return false; }
+      }
+      toast('Team updated.'); await loadLookups(); load();
+    });
+}
+async function teamActive(r){
+  if (r.is_active && !confirm(`${r.email} will no longer be able to open this company. Continue?`)) return;
+  const {data, error} = await S.sb.from('tenant_users').update({is_active:!r.is_active}).eq('tenant_id', S.tenant).eq('user_id', r.user_id).select();
+  if (error) return toast(error.message, 'err');
+  if (!data.length) return toast('Only an owner or admin can change the team.', 'err');
+  toast(r.is_active ? 'Deactivated.' : 'Activated.'); load();
+}
+
+/* ---------- import from Excel ---------- */
+const IMPORTS = {
+  items:{title:'items', cols:[['SKU','ABC-001',1],['Name','Blue pen',1],['HSN','96081019',1],['Unit','NOS'],['MRP','10'],['Purchase price','6.5'],
+    ['Discount %','0'],['GST %','18',1],['GST from','2017-07-01'],['Barcode','8901234567890'],['Track batch','N'],['Track expiry','N']]},
+  parties:{title:'suppliers and customers', cols:[['Name','Sharma Traders',1],['Type','supplier',1],['GSTIN','09ABCDE1234F1Z5'],['State code','09'],
+    ['MSME','Y'],['MSME category','micro'],['MSME activity','manufacturing'],['Udyam no',''],['Written agreement','N'],['Credit days','30'],['Credit limit',''],['Tally ledger','']]},
+  price_list_items:{title:'price list rates', cols:[['Price list','Dealer',1],['SKU','ABC-001',1],['From date','2026-04-01',1],['From qty','0'],['Rate','9'],['Discount %','']]}
+};
+const yes = v => /^(y|yes|true|1)$/i.test(String(v).trim());
+function toISO(v){
+  if (v instanceof Date && !isNaN(v)) return new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const s = String(v || '').trim(); if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return 'bad';
+}
+function importForm(kind){
+  const cfg = IMPORTS[kind];
+  const el = modal(`Import ${cfg.title} from Excel`, `
+    <p class="note">Use the template so the column headings match. Columns marked * are needed.
+      <button class="linkbtn" id="tpl">Download template</button></p>
+    <label for="fx">Excel or CSV file</label><input id="fx" type="file" accept=".xlsx,.xls,.csv" style="height:auto;padding:6px">
+    <div id="pv" class="note" style="margin-top:10px"></div>`, 'Import', async el2 => {
+      if (!el2._rows || !el2._rows.ok.length){ toast('Choose a file with valid rows first.', 'err'); return false; }
+      const n = await runImport(kind, el2._rows.ok);
+      toast(`${n} row(s) imported.`); await loadLookups(); load();
+    });
+  el.querySelector('#tpl').onclick = () => {
+    if (!window.XLSX) return toast('Excel tools did not load.', 'err');
+    const ws = XLSX.utils.aoa_to_sheet([cfg.cols.map(c => c[0] + (c[2] ? ' *' : '')), cfg.cols.map(c => c[1])]);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Import'); XLSX.writeFile(wb, `import_${kind}_template.xlsx`);
+  };
+  el.querySelector('#fx').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try{
+      const wb = XLSX.read(await file.arrayBuffer(), {cellDates:true});
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+      const norm = raw.map(r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/\*/g, '').trim().toLowerCase(), typeof v === 'string' ? v.trim() : v])));
+      el._rows = validateImport(kind, norm);
+      const {ok, bad} = el._rows;
+      el.querySelector('#pv').innerHTML = `<b>${ok.length} row(s) ready</b>${bad.length ? `, ${bad.length} with problems (these are skipped):<br>` +
+        bad.slice(0, 12).map(b => `Row ${b.row}: ${esc(b.msg)}`).join('<br>') + (bad.length > 12 ? `<br>and ${bad.length - 12} more` : '') : '.'}`;
+    }catch(err){ el.querySelector('#pv').textContent = 'Could not read that file. Save it as .xlsx and try again.'; }
+  };
+}
+function validateImport(kind, rows){
+  const ok = [], bad = [];
+  rows.forEach((r, i) => {
+    const row = i + 2, g = k => r[k] === undefined ? '' : r[k], n = k => g(k) === '' ? null : +g(k);
+    const fail = msg => bad.push({row, msg});
+    if (Object.values(r).every(v => v === '')) return;
+    if (kind === 'items'){
+      const sku = String(g('sku')).toUpperCase(), hsn = String(g('hsn')).replace(/\s/g, ''), gst = n('gst %'), from = toISO(g('gst from')) || '2017-07-01';
+      if (!sku || !g('name')) return fail('SKU and name are needed.');
+      if (!/^[0-9]{4,8}$/.test(hsn)) return fail(`HSN "${hsn}" should be 4 to 8 digits.`);
+      if (gst === null || isNaN(gst) || gst < 0 || gst > 100) return fail('GST % is missing or wrong.');
+      if (from === 'bad') return fail('GST from date is not a date.');
+      const unit = String(g('unit') || 'NOS').toUpperCase();
+      if (!UQC.includes(unit)) return fail(`Unit "${unit}" is not a GST UQC code.`);
+      for (const k of ['mrp','purchase price','discount %']) if (g(k) !== '' && isNaN(+g(k))) return fail(`${k} is not a number.`);
+      ok.push({sku, name:String(g('name')), hsn_code:hsn, uom:unit, mrp:n('mrp'), std_purchase_price:n('purchase price'),
+        default_discount_pct:n('discount %') || 0, track_batch:yes(g('track batch')), track_expiry:yes(g('track expiry')), _gst:gst, _from:from, _barcode:String(g('barcode')).trim()});
+    }
+    if (kind === 'parties'){
+      const type = String(g('type')).toLowerCase(), gstin = String(g('gstin')).toUpperCase().replace(/\s/g, '');
+      let st = String(g('state code')).padStart(2, '0'); if (st === '00') st = gstin.slice(0, 2) || '';
+      if (!g('name')) return fail('Name is needed.');
+      if (!['supplier','customer','both'].includes(type)) return fail('Type should be supplier, customer or both.');
+      if (gstin && !GSTIN_RE.test(gstin)) return fail(`GSTIN "${gstin}" does not look right.`);
+      if (st && !STATES.some(x => x[0] === st)) return fail(`State code "${st}" is not valid.`);
+      const cat = String(g('msme category')).toLowerCase(), act = String(g('msme activity')).toLowerCase();
+      if (cat && !['micro','small','medium'].includes(cat)) return fail('MSME category should be micro, small or medium.');
+      if (act && !['manufacturing','services','trading'].includes(act)) return fail('MSME activity should be manufacturing, services or trading.');
+      if (S.lk.parties.some(p => p.name.toLowerCase() === String(g('name')).toLowerCase())) return fail(`"${g('name')}" already exists (skipped).`);
+      ok.push({name:String(g('name')), party_type:type, gstin:gstin || null, state_code:st || null, is_msme:yes(g('msme')), msme_category:cat || null,
+        msme_activity:act || null, udyam_no:String(g('udyam no')) || null, has_written_agreement:yes(g('written agreement')),
+        credit_days:g('credit days') === '' ? null : parseInt(g('credit days'), 10), credit_limit:n('credit limit'), tally_ledger:String(g('tally ledger')) || null});
+    }
+    if (kind === 'price_list_items'){
+      const it = S.lk.items.find(x => x.sku.toUpperCase() === String(g('sku')).toUpperCase()), from = toISO(g('from date'));
+      if (!g('price list')) return fail('Price list name is needed.');
+      if (!it) return fail(`SKU "${g('sku')}" is not in the item master.`);
+      if (!from || from === 'bad') return fail('From date is missing or wrong.');
+      if (g('rate') === '' && g('discount %') === '') return fail('Give a rate, a discount, or both.');
+      ok.push({price_list:String(g('price list')), item_id:it.id, effective_from:from, min_qty:n('from qty') || 0, rate:n('rate'), discount_pct:n('discount %')});
+    }
+  });
+  return {ok, bad};
+}
+async function runImport(kind, rows){
+  const chunks = (a, n) => Array.from({length:Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
+  if (kind === 'items'){
+    let done = 0;
+    for (const part of chunks(rows, 400)){
+      const {data, error} = await S.sb.from('items').upsert(part.map(({_gst, _from, _barcode, ...x}) => ({...x, tenant_id:S.tenant})), {onConflict:'tenant_id,sku'}).select('id,sku');
+      if (error) throw new Error(friendlyDbError(error));
+      const id = Object.fromEntries(data.map(x => [x.sku, x.id]));
+      const rates = part.map(x => ({tenant_id:S.tenant, item_id:id[x.sku], effective_from:x._from, gst_rate:x._gst}));
+      const {error:e2} = await S.sb.from('item_gst_rates').upsert(rates, {onConflict:'item_id,effective_from', ignoreDuplicates:true});
+      if (e2) throw new Error(friendlyDbError(e2));
+      const bcs = part.filter(x => x._barcode).map(x => ({tenant_id:S.tenant, item_id:id[x.sku], barcode:x._barcode}));
+      if (bcs.length){ const {error:e3} = await S.sb.from('item_barcodes').upsert(bcs, {onConflict:'tenant_id,barcode', ignoreDuplicates:true}); if (e3) throw new Error(friendlyDbError(e3)); }
+      done += data.length;
+    }
+    return done;
+  }
+  if (kind === 'parties'){
+    let done = 0;
+    for (const part of chunks(rows, 400)){
+      const {error} = await S.sb.from('parties').insert(part.map(x => ({...x, tenant_id:S.tenant})));
+      if (error) throw new Error(friendlyDbError(error)); done += part.length;
+    }
+    return done;
+  }
+  if (kind === 'price_list_items'){
+    const names = [...new Set(rows.map(r => r.price_list))];
+    const missing = names.filter(nm => !S.lk.pls.some(p => p.name.toLowerCase() === nm.toLowerCase()));
+    if (missing.length){
+      const {error} = await S.sb.from('price_lists').insert(missing.map(nm => ({tenant_id:S.tenant, name:nm, list_type:'sales'})));
+      if (error) throw new Error(friendlyDbError(error));
+      await loadLookups();
+    }
+    const plId = nm => S.lk.pls.find(p => p.name.toLowerCase() === nm.toLowerCase()).id;
+    let done = 0;
+    for (const part of chunks(rows, 400)){
+      const {error} = await S.sb.from('price_list_items').upsert(part.map(({price_list, ...x}) => ({...x, tenant_id:S.tenant, price_list_id:plId(price_list)})),
+        {onConflict:'price_list_id,item_id,effective_from,min_qty'});
+      if (error) throw new Error(friendlyDbError(error)); done += part.length;
+    }
+    return done;
+  }
+}
+
+/* ---------- Group 2: approvals, returns, kits, serials, moves ---------- */
+const APPROVAL_KIND = {discount:'Discount above limit', below_cost:'Below cost', credit_limit:'Over credit limit', adjustment:'Large adjustment', po_value:'Large purchase order', cancel:'Cancelling'};
+function askApproval(msg, args){
+  modal('Approval needed', `<p>${esc(msg.replace(/^Needs approval:\s*/, ''))}</p>
+    <label for="an">Note for the approver (optional)</label><textarea id="an">${esc(args.p_note || '')}</textarea>
+    <p class="note">The entry stays as it is until an owner or manager approves it under Controls, Approvals.</p>`, 'Ask for approval', async el => {
+      const {data, error} = await S.sb.rpc('request_approval', {...args, p_note:el.querySelector('#an').value});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast(data ? 'Sent for approval.' : 'Already waiting for approval.'); load();
+    });
+}
+function decideForm(r, approve){
+  modal(`${approve ? 'Approve' : 'Reject'}: ${r.ref_no}`, `<p>${esc(r.summary)}</p>${r.request_note ? `<p class="note">Note: ${esc(r.request_note)}</p>` : ''}
+    <label for="dn">${approve ? 'Note (optional)' : 'Reason for rejecting'}</label><textarea id="dn"></textarea>`, approve ? 'Approve' : 'Reject', async el => {
+      const {error} = await S.sb.rpc('decide_approval', {p_request:r.id, p_approve:approve, p_note:el.querySelector('#dn').value});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast(approve ? 'Approved. The entry can now be posted.' : 'Rejected.'); load();
+    });
+}
+async function confirmOrder(r){
+  const {data, error} = await S.sb.rpc('confirm_order', {p_order:r.id});
+  if (error && error.hint === 'APPROVAL_REQUIRED') return askApproval(error.message, {p_order:r.id});
+  if (error) return toast(error.message, 'err');
+  toast(r.order_type === 'sales' && data ? `Held ${QTY.format(data.reserved)} units; ${QTY.format(data.backorder)} on backorder.` : 'Order confirmed.'); load();
+}
+async function supplierReturn(rows){
+  const sup = [...new Set(rows.map(r => r.vendor_id))], whs = [...new Set(rows.map(r => r.warehouse_id))];
+  if (!rows.length) return toast('No stock shown.', 'err');
+  if (sup.length > 1) return toast('Filter to one supplier first; each return goes to one supplier.', 'err');
+  if (whs.length > 1) return toast('Filter to one warehouse first.', 'err');
+  if (rows.length > 200) return toast('Filter to 200 lots or fewer.', 'err');
+  askReason(`Return ${rows.length} lot(s) to ${rows[0].supplier}`, 'Reason (printed on the debit note)', 'Make draft return', async reason => {
+    const {data, error} = await S.sb.rpc('draft_supplier_return', {p_lots:rows.map(r => r.lot_id), p_reason:reason});
+    if (error){ toast(error.message, 'err'); return false; }
+    if (confirm('Draft return made at cost. Post it now? (You can change rates first under Documents.)')) await postDoc(data, 'Return', true);
+    load();
+  });
+}
+function assembleForm(r, apart){
+  modal(`${apart ? 'Take apart' : 'Assemble'} ${r.kit_name}`, `<p class="note">${esc(r.warehouse)}: can make ${QTY.format(r.can_make)} from stock now.</p>
+    <label for="aq">How many kits</label><input id="aq" inputmode="numeric" value="1">
+    <label for="ab">${apart ? 'Take kits from bin' : 'Put kits into bin'}</label>
+    <select id="ab"><option value="">No bin</option>${S.lk.locs.filter(l => l.warehouse_id === r.warehouse_id).map(l => `<option value="${l.id}">${esc(l.full_code)}</option>`).join('')}</select>`,
+    apart ? 'Take apart' : 'Assemble', async el => {
+      const q = num(el.querySelector('#aq').value);
+      if (!(q > 0) || q !== Math.trunc(q)) { toast('Enter a whole number.', 'err'); return false; }
+      const {data, error} = await S.sb.rpc('assemble_kit', {p_kit:r.kit_item_id, p_wh:r.warehouse_id, p_qty:q, p_location:el.querySelector('#ab').value || null, p_disassemble:apart});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast(`${apart ? 'Taken apart' : 'Assembled'}: ${QTY.format(q)}, cost Rs ${INR.format(data.cost)}.`); load();
+    });
+}
+function variantForm(r){
+  modal(`Variants of ${r.name}`, `<p class="note">One line per attribute, values separated by commas. Every combination becomes an item with its own SKU and barcode,
+      copying the HSN, GST rate, MRP and prices. Existing combinations are skipped.</p>
+    <label for="va">Attributes</label><textarea id="va" rows="4">Size: S, M, L, XL\nColour: Red, Blue</textarea>`, 'Create variants', async el => {
+      const attrs = {};
+      for (const line of el.querySelector('#va').value.split(/\n/)){
+        const m = line.match(/^\s*([^:]+):\s*(.+)$/); if (!m) continue;
+        const vals = m[2].split(',').map(x => x.trim()).filter(Boolean); if (vals.length) attrs[m[1].trim()] = vals;
+      }
+      if (!Object.keys(attrs).length){ toast('Write at least one line like  Size: S, M, L', 'err'); return false; }
+      const {data, error} = await S.sb.rpc('create_variants', {p_parent:r.id, p_attrs:attrs});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast(`${data} variant(s) created.`); await loadLookups(); load();
+    }, true);
+}
+async function serialsForm(r){
+  const {data:lines} = await S.sb.from('document_lines').select('id,line_no,item_id,qty').eq('document_id', r.id).order('line_no');
+  const ser = (lines || []).filter(l => (S.lk.item[l.item_id] || {}).track_serial);
+  if (!ser.length) return toast('No item on this entry tracks serial numbers.');
+  const {data:have} = await S.sb.from('document_line_serials').select('document_line_id,serial_no').in('document_line_id', ser.map(l => l.id));
+  modal(`Serial numbers for ${r.doc_no}`, ser.map(l => `<label for="sn_${l.id}">${esc((S.lk.item[l.item_id] || {}).name)}: ${QTY.format(l.qty)} needed</label>
+      <textarea id="sn_${l.id}" rows="3" placeholder="One per line">${esc((have || []).filter(h => h.document_line_id === l.id).map(h => h.serial_no).join('\n'))}</textarea>`).join(''),
+    'Save', async el => {
+      for (const l of ser){
+        const list = [...new Set(el.querySelector('#sn_' + l.id).value.split(/[\n,]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
+        if (list.length !== num(l.qty)){ toast(`${(S.lk.item[l.item_id] || {}).name}: enter exactly ${QTY.format(l.qty)} serial numbers (${list.length} given).`, 'err'); return false; }
+        await S.sb.from('document_line_serials').delete().eq('document_line_id', l.id);
+        const {error} = await S.sb.from('document_line_serials').insert(list.map(x => ({document_line_id:l.id, serial_no:x})));
+        if (error){ toast(error.message, 'err'); return false; }
+      }
+      toast('Serial numbers saved. Post the entry when ready.'); load();
+    }, true);
+}
+async function officeMove(wh, item, from, to, qty, why){
+  if (!(qty > 0)) return toast('Nothing to move.', 'err');
+  if (!confirm(`Move ${QTY.format(qty)} of ${(S.lk.item[item] || {}).name || 'item'} from ${binOf(from)} to ${binOf(to)}?`)) return;
+  const {data:d, error} = await S.sb.from('documents').insert({tenant_id:S.tenant, doc_type:'transfer', doc_no:draftNo(), doc_date:isoToday(),
+    warehouse_id:wh, to_warehouse_id:wh, reason:why}).select('id').single();
+  if (error) return toast(error.message, 'err');
+  const {error:e2} = await S.sb.from('document_lines').insert({document_id:d.id, line_no:1, item_id:item, location_id:from, to_location_id:to, qty});
+  if (e2) return toast(e2.message, 'err');
+  await postDoc(d.id, 'Move');
+}
+function cycleForm(){
+  modal('Start a cycle count', `<label for="cw">Warehouse</label><select id="cw">${whOpts().map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select>
+    <p class="note">Takes the items most overdue (A first). Staff count them blind from the phone app (Count stock); you approve the differences here.</p>`, 'Start count', async el => {
+      const no = await nextNo('CYC-', 'stock_counts', 'count_no');
+      const {error} = await S.sb.rpc('create_cycle_count', {p_wh:el.querySelector('#cw').value, p_count_no:no});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast(`${no} started.`); openReport(REPORTS.find(x => x.id === 'counts'));
+    });
+}
+async function cyclePlanForm(wh){
+  const {data} = await S.sb.from('cycle_count_plans').select('*').eq('tenant_id', S.tenant);
+  const row = (data || []).find(x => x.warehouse_id === (wh || (S.lk.whs[0] || {}).id));
+  editForm('cycle_count_plans', row || null, row ? null : {warehouse_id:wh || (S.lk.whs[0] || {}).id});
+}
+async function whAccessForm(r){
+  const mine = new Set(S.lk.uwh[r.user_id] || []);
+  modal(`Warehouses for ${r.email}`, `<p class="note">Tick the warehouses this person may work in. Tick none to allow all. Owners and admins always see all.</p>
+    ${S.lk.whs.map(w => `<label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" data-wh="${w.id}" ${mine.has(w.id) ? 'checked' : ''}> ${esc(w.name)}</label>`).join('')}`,
+    'Save', async el => {
+      const ids = [...el.querySelectorAll('[data-wh]:checked')].map(x => x.dataset.wh);
+      const {error} = await S.sb.rpc('set_user_warehouses', {p_tenant:S.tenant, p_user:r.user_id, p_warehouses:ids});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast('Warehouse access saved.'); await loadLookups(); load();
+    });
+}
+
+/* ---------- dashboard ---------- */
+function dashHtml(){
+  const d = S.dash || {}, R = v => '₹' + INR.format(num(v)).replace(/\.00$/, ''), Q = v => QTY.format(num(v));
+  const card = (label, value, sub, go, tone) => `<button class="card2 ${tone || ''}" ${go ? `data-go="${go}"` : ''}><span>${esc(label)}</span><b>${value}</b><span>${esc(sub || '')}</span></button>`;
+  const pts = (d.sales_30 || []).map(x => num(x.v)), max = Math.max(1, ...pts), W = 600, H = 70;
+  const line = pts.map((v, i) => `${(i / Math.max(1, pts.length - 1) * W).toFixed(1)},${(H - v / max * (H - 6) - 3).toFixed(1)}`).join(' ');
+  const warn = (n, bad) => num(n) > 0 ? (bad ? 'bad' : 'warn') : '';
+  return `<div class="dash">
+    <h3>Today</h3>
+    ${card('Sales today', R(d.sales_today), `${Q(d.bills_today)} bill(s)`, 'docs')}
+    ${card('Sales this month', R(d.sales_month), 'Net of returns, with GST', 'docs')}
+    ${card('Purchases this month', R(d.purchases_month), 'Net of returns, with GST', 'docs')}
+    ${card('Stock value', R(d.stock_value), 'At cost', 'summary')}
+    <div class="card2 wide"><span>Sales, last 30 days</span><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" aria-label="Sales trend">
+      <polyline points="${line}" fill="none" stroke="#16213A" stroke-width="2"/></svg></div>
+    <h3>Needs attention</h3>
+    ${card('MSME payments overdue', R(d.msme_overdue), `${R(d.msme_due_7)} due in 7 days`, 'msme', warn(d.msme_overdue, true) || warn(d.msme_due_7))}
+    ${card('Customer dues overdue', R(d.receivable_overdue), `${R(d.receivable)} total receivable`, 'custageing', warn(d.receivable_overdue))}
+    ${card('Items to reorder', Q(d.reorder_items), 'At or below minimum level', 'reorder', warn(d.reorder_items))}
+    ${card('Near expiry', R(d.near_expiry_value), `${R(d.expired_value)} already expired`, 'expiry', warn(d.expired_value, true) || warn(d.near_expiry_value))}
+    ${card('E-way bills missing', Q(d.eway_missing), 'Movements of Rs 50,000 or more', 'eway', warn(d.eway_missing, true))}
+    ${card('Items below zero', Q(d.negative_items), 'Negative stock to correct', 'available', warn(d.negative_items, true))}
+    ${card('Counts to approve', Q(d.counts_to_approve), 'Submitted from the phone', 'counts', warn(d.counts_to_approve))}
+    ${card('Approvals waiting', Q(d.approvals_pending), 'Entries held for a decision', 'approvals', warn(d.approvals_pending, true))}
+    ${card('To put away', Q(d.putaway_lines), 'Lines in the receiving bay', 'putaway', warn(d.putaway_lines))}
+    ${card('Bins to refill', Q(d.refills), 'Home bins at minimum', 'refills', warn(d.refills))}
+    ${card('Cycle counts due', Q(d.cycle_due), 'Items due for counting', 'cycledue', warn(d.cycle_due))}
+    ${card('Drafts not posted', Q(d.drafts), 'Saved but not in stock', 'docs', warn(d.drafts))}
+    <h3>Work in progress</h3>
+    ${card('Open sales orders', Q(d.open_sales_orders), `${Q(d.backorder_qty)} units on backorder`, 'orders', warn(d.backorder_qty))}
+    ${card('Pick lists waiting', Q(d.picks_waiting), 'To pick, pack or bill', 'picks')}
+    ${card('Purchase orders pending', Q(d.open_purchase_orders), 'Goods still to arrive', 'orderlines')}
+    ${card('Not yet in Tally', Q(d.tally_pending), `${Q(d.tally_failed)} with errors`, 'tallysync', warn(d.tally_failed, true) || warn(d.tally_pending))}
+    ${card('Payable to suppliers', R(d.payable), 'All open bills', 'vendorageing')}
+    ${card('Quarantine stock', R(d.quarantine_value), 'Damaged or expired, not for sale', 'quarantine', warn(d.quarantine_value))}
+  </div>`;
+}
+
+/* ---------- printing ---------- */
+function printDoc(id){
+  if (!window.WMSPrint) return toast('Print module did not load. Keep wms-print.js next to this page.', 'err');
+  WMSPrint.doc(S.sb, id).catch(e => toast(e.message, 'err'));
+}
+
+/* ---------- e-invoice / e-way JSON ---------- */
+function download(name, text, type = 'application/json'){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const safeName = s => String(s).replace(/[^A-Za-z0-9-]+/g, '_');
+async function gstOne(r, kind){
+  const {data:miss, error} = await S.sb.rpc('gst_json_check', {p_doc:r.id, p_kind:kind});
+  if (error) return toast(error.message, 'err');
+  if (miss && miss.length){
+    if (kind === 'ewaybill' && miss.every(m => /distance|vehicle/i.test(m))) { toast(miss.join(' ') + ' Enter them now.', 'err'); return gstRefsForm(r, true); }
+    return toast(miss.join(' '), 'err');
+  }
+  const {data, error:e2} = await S.sb.rpc(kind === 'einvoice' ? 'einvoice_json' : 'ewaybill_json', {p_doc:r.id});
+  if (e2) return toast(e2.message, 'err');
+  const body = kind === 'einvoice' ? [data] : {version:'1.0.0621', billLists:[data]};
+  download(`${kind === 'einvoice' ? 'einvoice' : 'ewaybill'}_${safeName(r.doc_no)}.json`, JSON.stringify(body, null, 2));
+  toast('JSON downloaded. Upload it on the portal or send it through your GSP, then record the number here.');
+}
+async function gstBulk(kind){
+  const rows = sorted(filtered()).filter(r => (r.status || 'posted') === 'posted');
+  if (!rows.length) return toast('No posted rows shown.', 'err');
+  if (rows.length > 100) return toast('Filter to 100 documents or fewer.', 'err');
+  const ok = [], skipped = [];
+  for (const r of rows){
+    const id = r.id || r.doc_id;
+    const {data:miss} = await S.sb.rpc('gst_json_check', {p_doc:id, p_kind:kind});
+    if (miss && miss.length){ skipped.push(`${r.doc_no}: ${miss[0]}`); continue; }
+    const {data} = await S.sb.rpc(kind === 'einvoice' ? 'einvoice_json' : 'ewaybill_json', {p_doc:id});
+    if (data) ok.push(data);
+  }
+  if (ok.length) download(`${kind}_${isoToday()}_${ok.length}.json`, JSON.stringify(kind === 'einvoice' ? ok : {version:'1.0.0621', billLists:ok}, null, 2));
+  toast(`${ok.length} document(s) in the file.${skipped.length ? ` ${skipped.length} skipped: ${skipped.slice(0, 3).join('; ')}` : ''}`, skipped.length ? 'err' : '');
+}
+function gstRefsForm(r, transportOnly){
+  const f = (id, label, type = 'text', ph = '') => `<div><label for="${id}">${label}</label><input id="${id}" type="${type}" placeholder="${ph}"></div>`;
+  modal(`GST references for ${r.doc_no}`, `
+    ${transportOnly ? '' : `<label for="gpaste">Paste the portal or GSP reply (optional)</label><textarea id="gpaste" placeholder='{"Irn":"…","AckNo":…,"AckDt":"…","SignedQRCode":"…","EwbNo":…}'></textarea>`}
+    <div class="grid2">
+      ${transportOnly ? '' : f('girn', 'IRN') + f('gack', 'Ack no.') + f('gackd', 'Ack date and time', 'datetime-local') + f('gewb', 'E-way bill no.') + f('gewbd', 'E-way bill date', 'datetime-local') + f('gewbv', 'Valid up to', 'datetime-local')}
+      ${f('gveh', 'Vehicle no.', 'text', 'UP15AB1234')}${f('gdist', 'Distance (km)', 'text')}${f('gtid', 'Transporter ID (GSTIN)')}${f('gtname', 'Transporter name')}
+    </div>${transportOnly ? '' : '<label for="gqr">Signed QR code (for printing)</label><textarea id="gqr"></textarea>'}`,
+    'Save', async el => {
+      const g = id => { const x = el.querySelector('#' + id); return x ? x.value.trim() : ''; };
+      let p = {};
+      const pasted = g('gpaste');
+      if (pasted){
+        try{ const j = JSON.parse(pasted), d = j.data || j.Data || j;
+          p = {irn:d.Irn || d.irn, ack_no:String(d.AckNo || d.ackNo || ''), ack_date:d.AckDt || d.ackDt, signed_qr:d.SignedQRCode || d.signedQRCode,
+               eway_bill_no:String(d.EwbNo || d.ewayBillNo || d.ewbNo || ''), eway_bill_date:d.EwbDt || d.ewayBillDate, eway_valid_upto:d.EwbValidTill || d.validUpto};
+        }catch(e){ toast('The pasted text is not valid JSON.', 'err'); return false; }
+      }
+      const put = (k, v) => { if (v) p[k] = v; };
+      put('irn', g('girn')); put('ack_no', g('gack')); put('ack_date', g('gackd')); put('signed_qr', g('gqr'));
+      put('eway_bill_no', g('gewb')); put('eway_bill_date', g('gewbd')); put('eway_valid_upto', g('gewbv'));
+      put('vehicle_no', g('gveh')); put('distance_km', g('gdist')); put('transporter_id', g('gtid')); put('transporter_name', g('gtname'));
+      Object.keys(p).forEach(k => { if (p[k] === undefined || p[k] === '' || p[k] === 'undefined') delete p[k]; });
+      if (!Object.keys(p).length){ toast('Nothing entered.', 'err'); return false; }
+      const {error} = await S.sb.rpc('set_gst_refs', {p_doc:r.id, p:p});
+      if (error){ toast(error.message, 'err'); return false; }
+      toast('Saved.'); load();
+    }, true);
+}
+
+/* ---------- Tally ---------- */
+const tallyCompanyFor = g => (S.lk.tallyCos.find(c => c.gstin === g) || {}).company_name || '';
+const bridgeCfg = () => LS.get('wms.bridge', {url:'http://127.0.0.1:9110', key:''});
+async function bridgeCall(path, body){
+  const c = bridgeCfg();
+  const res = await fetch(c.url + path, {method:body ? 'POST' : 'GET', headers:{'Content-Type':'application/json', 'X-Bridge-Key':c.key},
+    body:body ? JSON.stringify(body) : undefined});
+  const j = await res.json().catch(() => ({ok:false, error:'The bridge sent an unreadable reply.'}));
+  if (!res.ok || j.ok === false) throw new Error(j.error || j.message || 'The bridge refused the request.');
+  return j;
+}
+function bridgeConnect(){
+  const c = bridgeCfg();
+  modal('Connect Tally Bridge', `<p class="note">Run Setup-WMS-Bridge.bat once on the computer where TallyPrime runs, then open this page on that computer and press Connect within 15 minutes.
+      From another computer, copy the key shown in the bridge window.</p>
+    <label for="bu">Bridge address</label><input id="bu" value="${esc(c.url)}">
+    <label for="bk">Key (leave blank to connect by itself)</label><input id="bk" value="${esc(c.key)}">
+    <div id="bstat" class="note" style="margin-top:10px"></div>`, 'Connect', async el => {
+      const url = el.querySelector('#bu').value.trim().replace(/\/$/, ''); let key = el.querySelector('#bk').value.trim();
+      const st = el.querySelector('#bstat');
+      try{
+        if (!key){ const r = await fetch(url + '/pair'); const j = await r.json(); if (!j.ok) throw new Error(j.error); key = j.key; }
+        LS.set('wms.bridge', {url, key});
+        const co = await bridgeCall('/companies');
+        const names = (co.companies || []).map(x => x.name);
+        const missing = S.lk.tallyCos.filter(t => !names.includes(t.company_name)).map(t => t.company_name);
+        toast(`Connected. Open in Tally: ${names.join(', ') || 'no company'}.${missing.length ? ' Not open: ' + missing.join(', ') + '.' : ''}`, missing.length ? 'err' : '');
+      }catch(e){
+        st.textContent = /Failed to fetch|NetworkError|Load failed/i.test(e.message)
+          ? 'The bridge is not answering. Start it on the Tally computer (Setup-WMS-Bridge.bat), and use Chrome or Edge.' : e.message;
+        return false;
+      }
+    });
+}
+async function tallyBuild(){
+  const rows = sorted(filtered());
+  if (!rows.length){ toast('Nothing to send.', 'err'); return null; }
+  if (rows.length > 300){ toast('Filter to 300 entries or fewer at a time.', 'err'); return null; }
+  if (!window.WMSTally){ toast('Tally module did not load. Keep wms-tally.js next to this page.', 'err'); return null; }
+  const D = await WMSTally.load(S.sb, S.tenant, rows);
+  const R = WMSTally.build(D, rows);
+  for (const p of R.problems) await S.sb.from('tally_sync_log').insert({tenant_id:S.tenant, entity:p.row.entity, entity_id:p.row.entity_id, action:p.row.action, side:p.row.side, status:'failed', message:p.message});
+  return R;
+}
+async function tallySend(){
+  const c = bridgeCfg(); if (!c.key) return bridgeConnect();
+  try{
+    const R = await tallyBuild(); if (!R) return;
+    let ok = 0, bad = R.problems.length, masterErr = [];
+    for (const [company, part] of Object.entries(R.byCompany)){
+      toast(`Sending ${part.vouchers.length} entries to ${company}…`);
+      const res = await bridgeCall('/import', {company, masters:part.masters, vouchers:part.vouchers.map((v, i) => ({id:'v' + i, xml:v.xml}))});
+      (res.results || []).filter(x => x.kind === 'master' && !x.ok && !/exist/i.test(x.message || '')).forEach(x => masterErr.push(`${x.id.slice(2)}: ${x.message}`));
+      const logs = part.vouchers.map((v, i) => {
+        const x = (res.results || []).find(y => y.kind === 'voucher' && y.id === 'v' + i) || {ok:false, message:'No reply for this entry.'};
+        if (x.ok) ok++; else bad++;
+        return {tenant_id:S.tenant, entity:v.row.entity, entity_id:v.row.entity_id, action:v.row.action, side:v.row.side, status:x.ok ? 'ok' : 'failed',
+                message:x.ok ? (x.verified === false ? 'Created; not read back' : 'Created') : (x.message || x.error), tally_company:company,
+                voucher_no:x.vchNumber || v.voucherNo || null, guid:x.guid || null};
+      });
+      if (logs.length){ const {error} = await S.sb.from('tally_sync_log').insert(logs); if (error) toast(error.message, 'err'); }
+    }
+    toast(`${ok} entr${ok === 1 ? 'y' : 'ies'} in Tally.${bad ? ` ${bad} failed; see Last error.` : ''}${masterErr.length ? ' Masters not created: ' + masterErr.slice(0, 3).join('; ') : ''}`, bad || masterErr.length ? 'err' : '');
+    load();
+  }catch(e){ toast(/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'The Tally Bridge is not answering. Is it running on this computer?' : e.message, 'err'); }
+}
+async function tallyExport(){
+  try{
+    const R = await tallyBuild(); if (!R) return;
+    const cos = Object.entries(R.byCompany);
+    if (!cos.length) return toast('Nothing could be prepared. See Last error.', 'err');
+    cos.forEach(([company, part]) => {
+      download(`tally_masters_${safeName(company)}_${isoToday()}.xml`, WMSTally.envelope(company, part.masters, 'All Masters'), 'text/xml');
+      download(`tally_vouchers_${safeName(company)}_${isoToday()}.xml`, WMSTally.envelope(company, part.vouchers, 'Vouchers'), 'text/xml');
+    });
+    const n = cos.reduce((a, [, p]) => a + p.vouchers.length, 0);
+    setTimeout(async () => {
+      if (!confirm(`In TallyPrime: Import, Masters first, then Transactions, using the downloaded files.\n\nMark these ${n} entries as sent to Tally?`)) return;
+      const logs = cos.flatMap(([company, part]) => part.vouchers.map(v => ({tenant_id:S.tenant, entity:v.row.entity, entity_id:v.row.entity_id, action:v.row.action,
+        side:v.row.side, status:'exported', message:'Exported as XML file', tally_company:company, voucher_no:v.voucherNo || null})));
+      const {error} = await S.sb.from('tally_sync_log').insert(logs);
+      if (error) return toast(error.message, 'err');
+      toast(`${n} entries marked as sent.`); load();
+    }, 400);
+  }catch(e){ toast(e.message, 'err'); }
+}
+async function tallyMarkDone(r){
+  if (!confirm(`Mark ${r.doc_no} as already entered in Tally? It will not be sent again.`)) return;
+  const {error} = await S.sb.from('tally_sync_log').insert({tenant_id:S.tenant, entity:r.entity, entity_id:r.entity_id, action:r.action, side:r.side,
+    status:'ok', message:'Marked as done by hand', tally_company:tallyCompanyFor(r.gstin) || null});
+  if (error) return toast(error.message, 'err'); toast('Marked.'); load();
+}
+
+/* ---------- labels ---------- */
+function labelForm(kind){
+  const rows = sorted(filtered());
+  if (!rows.length) return toast('No rows to print. Clear the filters first.', 'err');
+  modal(`Print ${rows.length} ${kind === 'item' ? 'item' : 'bin'} label(s)`, `
+    <p class="note">Prints the rows shown now. Use the column filters to choose which ${kind === 'item' ? 'items' : 'bins'}.</p>
+    <label for="ls">Label size</label>
+    <select id="ls"><option value="roll">50 × 25 mm thermal roll</option><option value="sheet">A4 sheet, 3 × 8 labels</option></select>
+    <label for="lc">Copies of each</label><input id="lc" type="number" min="1" max="500" value="1">`,
+    'Print', async el => {
+      if (!window.JsBarcode){ toast('Barcode maker did not load. Check the connection.', 'err'); return false; }
+      printLabels(kind, rows, el.querySelector('#ls').value, Math.max(1, Math.min(500, parseInt(el.querySelector('#lc').value, 10) || 1)));
+    });
+}
+function printLabels(kind, rows, size, copies){
+  let area = $('#printArea'); if (!area){ area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
+  let ps = $('#pageStyle'); if (!ps){ ps = document.createElement('style'); ps.id = 'pageStyle'; document.head.appendChild(ps); }
+  ps.textContent = size === 'roll' ? '@page{size:50mm 25mm;margin:0}' : '@page{size:A4;margin:10mm 6mm}';
+  const items = [];
+  rows.forEach(r => { for (let i = 0; i < copies; i++) items.push(r); });
+  area.className = size === 'roll' ? 'roll' : 'sheet';
+  area.innerHTML = items.map((r, i) => kind === 'item'
+    ? `<div class="lbl"><div class="t1">${esc(r.name)}</div><svg id="bc${i}"></svg><div class="t2">${esc(r.sku)}${r.mrp ? ' &nbsp; MRP ₹' + INR.format(r.mrp) : ''}</div></div>`
+    : `<div class="lbl bin"><div class="t1">${esc(r.full_code)}</div><svg id="bc${i}"></svg><div class="t2">${esc(r.warehouse)}</div></div>`).join('');
+  items.forEach((r, i) => {
+    const code = kind === 'item' ? (S.lk.bc[r.id] || r.sku) : r.full_code;
+    try{ JsBarcode(area.querySelector('#bc' + i), code, {format:'CODE128', height:size === 'roll' ? 34 : 40, width:1.3, margin:0, fontSize:10, displayValue:kind === 'item'}); }catch(e){}
+  });
+  document.body.classList.add('lbl-printing');
+  setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('lbl-printing'), 500); }, 50);
+}
+
+/* ---------- export ---------- */
+function exportXls(){
+  if (!window.XLSX) return toast('Excel export did not load. Check the connection.', 'err');
+  const rep = S.rep, rows = sorted(filtered());
+  const data = rows.map(r => Object.fromEntries(rep.cols.map(c => [c.label,
+    c.type === 'num' || c.type === 'money' ? (r[c.k] === null || r[c.k] === undefined ? null : num(r[c.k]))
+    : c.type === 'bool' ? (r[c.k] ? 'Yes' : 'No') : shown(c, r)])));
+  const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, rep.title.slice(0, 31));
+  const t = S.tenants.find(x => x.id === S.tenant) || {};
+  XLSX.writeFile(wb, `${(t.name || 'Company').replace(/[^\w]+/g, '-')}_${rep.id}_${isoToday()}.xlsx`);
+}
+
+/* ---------- events (one delegated handler) ---------- */
+document.addEventListener('click', e => {
+  const t = e.target;
+  const ng = t.closest('[data-grp]'); if (ng){ toggleNavGroup(ng.dataset.grp); return; }
+  const a = t.closest('[data-rep]'); if (a){ e.preventDefault(); if (a.closest('nav')) S.navq = ''; openReport(REPORTS.find(r => r.id === a.dataset.rep)); return; }
+  const ac = t.closest('[data-act]');
+  if (ac){ const [ri, ai] = ac.dataset.act.split('|').map(Number); const act = S.rep.actions(S.page[ri])[ai]; if (act) act.fn(); return; }
+  const tl = t.closest('[data-tool]'); if (tl){ S.rep.tools[+tl.dataset.tool].fn(); return; }
+  if (t.closest('.modal-bg') ) return;
+  const cf = t.closest('[data-colf]');
+  if (cf){
+    const k = cf.dataset.colf;
+    if (k === '__q'){ $('#q').focus(); return; }
+    S.pop = S.pop && S.pop.k === k && !cf.classList.contains('fchip-l') ? null : {k, draft:{...(S.f[k] || {})}, justOpened:true};
+    render(); return;
+  }
+  const sb = t.closest('[data-sort]');
+  if (sb){ const k = sb.dataset.sort; S.sort = S.sort && S.sort.k === k ? {k, dir:S.sort.dir === 'asc' ? 'desc' : 'asc'} : {k, dir:'asc'}; render(); return; }
+  if (t.closest('[data-chipx]')){ const k = t.closest('[data-chipx]').dataset.chipx; if (k === '__q') S.q = ''; else delete S.f[k]; LS.set('wms.f.' + S.rep.id, S.f); render(); return; }
+  if (t.closest('[data-chipall]')){ S.f = {}; S.q = ''; S.pop = null; LS.set('wms.f.' + S.rep.id, S.f); render(); return; }
+  if (t.closest('[data-cpclose]')){ S.pop = null; render(); return; }
+  if (t.closest('[data-cpdone]')){ applyPop(true); return; }
+  if (t.closest('[data-cpapply]')){ applyPop(true); return; }
+  if (t.closest('[data-cpclear]')){
+    S.pop.draft = {}; S.pop.search = '';
+    if (S.auto){ delete S.f[S.pop.k]; LS.set('wms.f.' + S.rep.id, S.f); }
+    render(); return;
+  }
+  const qk = t.closest('[data-cpquick]');
+  if (qk){
+    const [a1, b1] = quickRange(qk.dataset.cpquick), pop = $('#colpop');
+    pop.querySelector('[data-pf="from"]').value = a1; pop.querySelector('[data-pf="to"]').value = b1;
+    if (S.auto) applyPop(false); else { readPop(); render(); }
+    return;
+  }
+  const dc = t.closest('[data-go]'); if (dc && S.rep && S.rep.custom){ openReport(REPORTS.find(r => r.id === dc.dataset.go)); return; }
+  if (t.id === 'more'){ S.limit += 500; render(); return; }
+  if (t.id === 'xls'){ exportXls(); return; }
+  if (t.id === 'reload'){ load(); return; }
+  if (t.id === 'so'){ signOut(); return; }
+  if (S.pop && !t.closest('#colpop')){ S.pop = null; render(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'coSel'){ useTenant(S.tenants.find(x => x.id === t.value)); return; }
+  if (t.dataset.param){ S.params[t.dataset.param] = t.value; load(); return; }
+  if (t.matches('[data-cpauto]')){ S.auto = t.checked; LS.set('wms.colAuto', S.auto); readPop(); render(); return; }
+  if (t.matches('[data-cpall]')){
+    const boxes = [...document.querySelectorAll('#colpop [data-pv]')]; boxes.forEach(b => b.checked = t.checked);
+    if (S.auto) applyPop(false); return;
+  }
+  if (t.closest('#colpop') && S.auto && (t.matches('[data-pv]') || t.matches('[data-pf]'))) applyPop(false);
+});
+let typeT;
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'q'){ clearTimeout(typeT); typeT = setTimeout(() => { S.q = t.value; S.limit = 300; render(); const q = $('#q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 250); return; }
+  if (t.matches('[data-cpsearch]')){ readPop(); S.pop.search = t.value; S.pop.focus = '[data-cpsearch]'; render(); return; }
+  if (S.auto && t.closest('#colpop') && t.matches('[data-pf]') && t.type === 'text'){
+    clearTimeout(typeT); const sel = `[data-pf="${t.dataset.pf}"]`;
+    typeT = setTimeout(() => { S.pop.focus = sel; applyPop(false); }, 350);
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('.modal-bg')){ closeModal(); return; }
+  if (!S.pop) return;
+  if (e.key === 'Escape'){ S.pop = null; render(); }
+  if (e.key === 'Enter' && e.target.closest('#colpop') && e.target.type !== 'checkbox'){ e.preventDefault(); applyPop(true); }
+});
+document.addEventListener('input', e => {
+  if (e.target.id !== 'navq') return;
+  S.navq = e.target.value; const l = $('#navlist'); if (l && S.rep) l.innerHTML = navHtml(S.rep);
+});
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'navq' && e.key === 'Enter'){ const a = $('#navlist a'); if (a) a.click(); }
+  if (e.target.id === 'navq' && e.key === 'Escape'){ e.target.value = ''; S.navq = ''; $('#navlist').innerHTML = navHtml(S.rep); }
+});
+window.addEventListener('resize', placePop);
+window.addEventListener('hashchange', () => { const r = REPORTS.find(x => x.id === location.hash.slice(1)); if (r && S.rep && r.id !== S.rep.id) openReport(r); });
+boot();
+</script>
+</body>
+</html>
