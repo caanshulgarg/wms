@@ -51,6 +51,10 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 .btn.ghost{background:transparent;border:2px solid var(--ink);color:var(--ink)}
 .btn:disabled{opacity:.45}
 .hint{font-size:14px;color:var(--muted);margin:8px 0 0}
+.hint.auto{color:#1D6B3A;font-weight:500}
+.bexp{display:flex;gap:8px;margin-top:6px}
+.bexp label{flex:1;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.bexp input{height:34px;border:1px solid var(--line,#D4D8E0);border-radius:6px;padding:0 8px;font-size:15px;min-width:0}
 
 /* home tiles: the job, in the words a storekeeper uses */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -311,7 +315,7 @@ async function loadMasters(){
   let m;
   try{
     const [items, bcs, locs, parties, whs, sps] = await Promise.all([
-      fetchAll('items', 'id,sku,name,uom,hsn_code,mrp,std_purchase_price,is_active,track_serial,kit_type,is_template'),
+      fetchAll('items', 'id,sku,name,uom,hsn_code,mrp,std_purchase_price,is_active,track_serial,track_batch,track_expiry,kit_type,is_template'),
       fetchAll('item_barcodes', 'barcode,item_id,pack_qty'),
       fetchAll('locations', 'id,warehouse_id,full_code,is_active'),
       fetchAll('parties', 'id,name,party_type,gstin,state_code,is_active'),
@@ -370,6 +374,51 @@ function viewHome(){
   $('#so').onclick = signOut;
 }
 
+/* ---------- GS1 barcodes: GTIN, batch, expiry, serial read from one scan ---------- */
+// Handles "(01)08901234567897(17)270331(10)B12" and raw scans with the GS separator, with or without a ]d2 / ]C1 prefix.
+function parseGS1(raw){
+  let s = String(raw || '').replace(/^\][A-Za-z]\d/, '');
+  const out = {};
+  if (/^\(\d{2,4}\)/.test(s)){
+    for (const m of s.matchAll(/\((\d{2,4})\)([^(]*)/g)) out[m[1]] = m[2].trim();
+  } else {
+    if (!/^(01|02)\d{14}/.test(s)) return null;
+    const FIX = {'00':18, '01':14, '02':14, '11':6, '12':6, '13':6, '15':6, '16':6, '17':6, '20':2};
+    let i = 0;
+    while (i < s.length){
+      const ai2 = s.slice(i, i + 2), ai4 = s.slice(i, i + 4);
+      let ai, len = null;
+      if (FIX[ai2]){ ai = ai2; len = FIX[ai2]; }
+      else if (['10','21','22','240','241','30','37','90'].some(a => s.startsWith(a, i))){ ai = ['240','241'].includes(s.slice(i, i + 3)) ? s.slice(i, i + 3) : ai2; }
+      else if (/^31\d\d|^32\d\d/.test(ai4)){ ai = ai4; len = 6; }
+      else break;
+      i += ai.length;
+      if (len){ out[ai] = s.slice(i, i + len); i += len; }
+      else { let j = s.indexOf('\x1d', i); if (j < 0) j = s.length; out[ai] = s.slice(i, j); i = j + 1; }
+      if (s[i] === '\x1d') i++;
+    }
+  }
+  if (!out['01'] && !out['02']) return null;
+  const exp = out['17'] || out['15'];
+  let expiry = null;
+  if (/^\d{6}$/.test(exp || '')){
+    const y = 2000 + +exp.slice(0, 2), m = +exp.slice(2, 4), d = +exp.slice(4, 6);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();          // day 00 means the end of that month
+    expiry = `${y}-${String(m).padStart(2, '0')}-${String(d || last).padStart(2, '0')}`;
+  }
+  const qty = out['30'] || out['37'];
+  return {gtin:out['01'] || out['02'], batch:(out['10'] || '').replace(/\x1d/g, '') || null, expiry,
+          serial:(out['21'] || '').replace(/\x1d/g, '') || null, qty:qty ? num(qty) : null};
+}
+function itemByGtin(gtin){
+  const g = String(gtin).replace(/\D/g, '');
+  for (const c of [g, g.replace(/^0+/, ''), g.slice(1), g.padStart(14, '0')]){
+    const bc = S.m.barcodes[c]; if (bc && S.m.byId[bc.item_id]) return {item:S.m.byId[bc.item_id], bc};
+    const it = S.m.bySku[c]; if (it) return {item:it, bc:null};
+  }
+  return null;
+}
+
 /* ---------- Scanning ---------- */
 function onScan(raw){
   const code = String(raw || '').trim().toUpperCase();
@@ -388,9 +437,28 @@ function onScan(raw){
     if (S.view === 'count') renderCount();
     return;
   }
+  const gs1 = S.m.barcodes[code] || S.m.bySku[code] ? null : parseGS1(String(raw || '').trim());   // a registered barcode always wins
+  if (gs1){
+    const hit = itemByGtin(gs1.gtin);
+    if (!hit){ beep(false); toast(`GTIN ${gs1.gtin} is not set up as a barcode for any item. Add it in the office app (Items > Barcodes).`, 'err'); return; }
+    beep();
+    if (S.view === 'lookup') return showStock(hit.item);
+    if (S.view === 'doc'){
+      const packs = hit.bc ? num(hit.bc.pack_qty) : 1;
+      if (hit.item.track_serial && gs1.serial) return addSerial(hit.item, gs1.serial, gs1.gtin, {batch:gs1.batch, expiry:gs1.expiry});
+      if (hit.item.track_serial){ S.pendingSerial = {item:hit.item, code:gs1.gtin}; toast(`Now scan the serial number of ${hit.item.name}.`); return renderDoc(); }
+      return addLine(hit.item, gs1.qty || packs, gs1.gtin, {batch:gs1.batch, expiry:gs1.expiry});
+    }
+    if (S.view === 'pick') return pickScan(hit.item, gs1.qty || (hit.bc ? num(hit.bc.pack_qty) : 1));
+    if (S.view === 'count') return countScan(hit.item, gs1.qty || (hit.bc ? num(hit.bc.pack_qty) : 1));
+    return;
+  }
   const bc = S.m.barcodes[code];
   const item = bc ? S.m.byId[bc.item_id] : S.m.bySku[code];
   if (!item){
+    if (S.view === 'doc' && ['sales_return','purchase_return'].includes(S.doc.type) && code.includes('/')){
+      beep(); S.doc.against_no = code; return lookupAgainst();
+    }
     if (S.view === 'doc') return serialLookup(code);
     beep(false); toast(`${code} is not a known item or bin in this warehouse.`, 'err'); return;
   }
@@ -423,16 +491,110 @@ function startDoc(type){
   S.view = 'doc';
   S.doc = {type, lines:[], party_id:'', party_doc_no:'', party_doc_date:today(), to_wh:'', to_loc:'',
            sales_point_id:'', incl_tax:true, doc_date:today(), order_id:'', po:null, poOptions:null,
-           condition:'good', reason:'', against_no:'', paid:true};
+           condition:'good', reason:'', against_no:'', paid:true, auto:{}, against:null};
+  const d = S.doc, wh = S.m.whs.find(w => w.id === S.wh) || {};
+  // goods coming in land in the receiving bay unless a bin is scanned
+  if (['grn','adjustment_in','sales_return'].includes(type) && wh.receiving_location_id && S.m.locs.some(l => l.id === wh.receiving_location_id))
+    { S.bin = wh.receiving_location_id; d.auto.bin = 'Receiving bay'; }
+  else if (['sales_invoice','purchase_return','adjustment_out','transfer'].includes(type)) S.bin = null;   // oldest stock first, from any bin
+  // counter: the only one here, or the one this phone used last
+  if (type === 'sales_invoice'){
+    const sps = S.m.sps.filter(x => x.warehouse_id === S.wh), last = LS.get('wms.sp.' + S.wh, '');
+    const pick = sps.length === 1 ? sps[0].id : sps.some(x => x.id === last) ? last : '';
+    if (pick){ d.sales_point_id = pick; d.auto.sp = sps.length === 1 ? 'the only counter here' : 'last used on this phone'; }
+  }
   renderDoc();
 }
 
-function addSerial(item, serial, code){
+/* ---------- Auto-fill from what the system already knows ---------- */
+const online = () => navigator.onLine && S.sb;
+function note(t){ return `<p class="hint auto">✓ ${t}</p>`; }
+// Receive goods: supplier and PO from the first item scanned
+async function autoSupplierForItem(item){
+  const d = S.doc;
+  if (!d || d.type !== 'grn' || d.party_id || d.auto.tried || !online()) return;
+  d.auto.tried = true;
+  try{
+    const {data} = await S.sb.from('v_order_lines_status').select('order_id,order_no,party_id,party,order_date')
+      .eq('tenant_id', S.tenant).eq('order_type', 'purchase').eq('order_status', 'confirmed').eq('warehouse_id', S.wh)
+      .eq('item_id', item.id).gt('pending_qty', 0).order('order_date');
+    if (S.doc !== d || d.party_id) return;
+    const sups = [...new Set((data || []).map(r => r.party_id))];
+    if (sups.length === 1){
+      d.party_id = sups[0]; d.order_id = data[0].order_id;
+      d.auto.party = `from open purchase order ${data[0].order_no}`;
+      await loadPoOptions(true); await loadPoLines();
+      toast(`Supplier and PO ${data[0].order_no} filled in.`, 'ok'); return;
+    }
+    if (sups.length > 1){
+      d.auto.partyHint = `${item.name} is on open orders of ${[...new Set(data.map(r => r.party))].join(', ')}. Choose the supplier.`;
+      return renderDoc();
+    }
+    const {data:lot} = await S.sb.from('stock_lots').select('vendor_id,inward_date').eq('tenant_id', S.tenant)
+      .eq('item_id', item.id).not('vendor_id', 'is', null).order('inward_date', {ascending:false}).limit(1);
+    if (S.doc !== d || d.party_id) return;
+    const v = lot && lot[0] && S.m.parties.find(p => p.id === lot[0].vendor_id);
+    if (v){ d.party_id = v.id; d.auto.party = `last bought from ${v.name}`; await loadPoOptions(true); }
+  }catch(e){}
+}
+// Return to supplier: the supplier whose stock of this item is on hand here
+async function autoSupplierFromStock(item){
+  const d = S.doc;
+  if (!d || d.type !== 'purchase_return' || d.party_id || d.auto.tried || !online()) return;
+  d.auto.tried = true;
+  try{
+    const {data} = await S.sb.from('stock_lots').select('vendor_id').eq('tenant_id', S.tenant).eq('warehouse_id', S.wh)
+      .eq('item_id', item.id).gt('qty_remaining', 0).not('vendor_id', 'is', null);
+    if (S.doc !== d || d.party_id) return;
+    const vs = [...new Set((data || []).map(r => r.vendor_id))].map(id => S.m.parties.find(p => p.id === id)).filter(Boolean);
+    if (vs.length === 1){ d.party_id = vs[0].id; d.auto.party = `the only supplier with ${item.name} in stock here`; }
+    else if (vs.length > 1) d.auto.partyHint = `Stock of ${item.name} here came from ${vs.map(v => v.name).join(', ')}. Choose the supplier.`;
+    renderDoc();
+  }catch(e){}
+}
+// Returns: the original invoice / GRN fills the party, and (for customers) the original price and discount
+async function lookupAgainst(){
+  const d = S.doc; if (!d || !d.against_no) { if (d){ d.against = null; renderDoc(); } return; }
+  if (!online()) return renderDoc();
+  const t = d.type === 'purchase_return' ? 'grn' : 'sales_invoice', no = d.against_no.toUpperCase();
+  const {data:doc} = await S.sb.from('documents').select('id,doc_no,party_id,status,prices_include_tax,warehouse_id')
+    .eq('tenant_id', S.tenant).eq('doc_type', t).eq('doc_no', no).maybeSingle();
+  if (S.doc !== d) return;
+  if (!doc || doc.status !== 'posted'){
+    d.against = null; beep(false);
+    toast(!doc ? `${t === 'grn' ? 'GRN' : 'Invoice'} ${no} was not found.` : `${no} is ${doc.status}, not posted.`, 'err');
+    return renderDoc();
+  }
+  const {data:ls} = await S.sb.from('document_lines').select('item_id,rate,discount_pct,unit_factor,qty').eq('document_id', doc.id);
+  const lines = {};
+  (ls || []).forEach(l => { if (!lines[l.item_id]) lines[l.item_id] = {rate:num(l.rate) / num(l.unit_factor || 1), discount_pct:num(l.discount_pct), qty:0}; lines[l.item_id].qty += num(l.qty); });
+  d.against = {id:doc.id, no:doc.doc_no, lines};
+  if (doc.party_id){ d.party_id = doc.party_id; const p = S.m.parties.find(x => x.id === doc.party_id); d.auto.party = `from ${doc.doc_no}${p ? ', ' + p.name : ''}`; }
+  if (d.type === 'sales_return'){
+    d.incl_tax = !!doc.prices_include_tax;
+    d.lines.forEach(l => { const o = lines[l.item_id]; if (o){ l.rate = o.rate; l.discount_pct = o.discount_pct; } });
+  }
+  toast(`Filled in from ${doc.doc_no}.`, 'ok');
+  renderDoc();
+}
+// Move stock: suggest the bin to move into
+async function autoIntoBin(){
+  const d = S.doc;
+  if (!d || d.type !== 'transfer' || !d.to_wh || d.to_loc || !d.lines.length || !online()) return;
+  const l = d.lines[d.lines.length - 1];
+  try{
+    const {data} = await S.sb.rpc('putaway_options', {p_item:l.item_id, p_wh:d.to_wh, p_qty:num(l.qty)});
+    const o = (data || []).find(x => x.location_id !== l.location_id);
+    if (o && S.doc === d && !d.to_loc){ d.to_loc = o.location_id; d.auto.toLoc = `${o.reason.toLowerCase()} for ${(S.m.byId[l.item_id] || {}).name || 'this item'}`; renderDoc(); }
+  }catch(e){}
+}
+
+function addSerial(item, serial, code, extra={}){
   const d = S.doc; serial = String(serial).trim().toUpperCase();
   if (!serial) return;
   if (d.lines.some(l => (l.serials || []).includes(serial) && l.item_id === item.id)){ beep(false); toast(`Serial ${serial} is already on this entry.`, 'err'); return renderDoc(); }
   let ln = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null));
-  if (!ln){ addLine(item, 0, code); ln = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null)); }
+  if (!ln){ addLine(item, 0, code, extra); ln = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null)); }
   ln.serials = (ln.serials || []).concat(serial); ln.qty = ln.serials.length;
   renderDoc();
 }
@@ -444,18 +606,28 @@ async function serialLookup(code){
   if (!hit){ beep(false); return toast(`${code} is not a known item, bin or serial number here.`, 'err'); }
   beep(); addSerial(S.m.byId[hit.item_id] || {id:hit.item_id, name:'Item', sku:''}, code, code);
 }
-function addLine(item, qty, code){
+function addLine(item, qty, code, extra={}){
   const d = S.doc, cfg = DOC[d.type];
+  const batch = extra.batch || null, expiry = extra.expiry || null;
+  if (d.against && d.type === 'sales_return' && !d.against.lines[item.id]){ beep(false); toast(`${item.sku} is not on invoice ${d.against.no}.`, 'err'); }
   if (d.po && !d.po.some(p => p.item_id === item.id)){ beep(false); toast(`${item.sku} is not on this purchase order.`, 'err'); }
   const pol = d.po ? d.po.find(p => p.item_id === item.id) : null;
-  const ex = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null));
+  const ex = d.lines.find(l => l.item_id === item.id && l.location_id === (S.bin || null) && (!batch || !l.batch_no || l.batch_no === batch));
   if (ex && item.track_serial) return;
+  if (ex && batch && !ex.batch_no){ ex.batch_no = batch; ex.expiry_date = expiry || ex.expiry_date; }
   if (ex) ex.qty = +(num(ex.qty) + qty).toFixed(3);
-  else d.lines.unshift({item_id:item.id, location_id:S.bin || null, barcode:code, qty,
-                        rate: pol ? num(pol.rate) / num(pol.unit_factor || 1) : cfg.rate ? num(item[cfg.rate]) : null,
-                        discount_pct: pol ? num(pol.discount_pct) : null,
-                        order_line_id: pol ? pol.order_line_id : null});
+  else {
+    const orig = d.against && d.type === 'sales_return' ? d.against.lines[item.id] : null;
+    d.lines.unshift({item_id:item.id, location_id:S.bin || null, barcode:code, qty, batch_no:batch, expiry_date:expiry,
+                     rate: pol ? num(pol.rate) / num(pol.unit_factor || 1) : orig ? orig.rate : cfg.rate ? num(item[cfg.rate]) : null,
+                     discount_pct: pol ? num(pol.discount_pct) : orig ? orig.discount_pct : null,
+                     order_line_id: pol ? pol.order_line_id : null});
+  }
+  if (batch) toast(`Batch ${batch}${expiry ? ', expiry ' + expiry.split('-').reverse().join('-') : ''} read from the barcode.`, 'ok');
   renderDoc();
+  if (d.type === 'grn') autoSupplierForItem(item);
+  if (d.type === 'purchase_return' && !d.against_no) autoSupplierFromStock(item);
+  if (d.type === 'transfer') autoIntoBin();
 }
 
 function renderDoc(){
@@ -466,7 +638,8 @@ function renderDoc(){
   let head = '';
   if (d.type === 'grn') head = `
     <label for="pty">Supplier</label>
-    <select id="pty"><option value="">Choose supplier</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    <select id="pty"><option value="">Choose supplier, or scan the first item</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    ${d.party_id && d.auto.party ? note('Supplier ' + esc(d.auto.party)) : d.auto.partyHint ? `<p class="hint">${esc(d.auto.partyHint)}</p>` : ''}
     <div class="row"><div><label for="pdn">Supplier bill no.</label><input id="pdn" value="${esc(d.party_doc_no)}"></div>
     <div><label for="pdd">Bill date</label><input id="pdd" type="date" value="${esc(d.party_doc_date)}"></div></div>
     <label for="por">Against purchase order</label>
@@ -477,9 +650,10 @@ function renderDoc(){
     <label for="pty">Customer</label>
     <select id="pty"><option value="">Walk-in customer</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
     <div class="row">
-      <div><label for="agn">Original invoice no.</label><input id="agn" value="${esc(d.against_no)}" placeholder="INV-00012"></div>
+      <div><label for="agn">Original invoice no.</label><input id="agn" value="${esc(d.against_no)}" placeholder="Type or scan"></div>
       <div><label for="cnd">Condition</label><select id="cnd">${[['good','Good, resell'],['damaged','Damaged'],['expired','Expired']].map(([v, l]) => `<option value="${v}" ${d.condition === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     </div>
+    ${d.against ? note(`Customer, prices and discount taken from invoice ${esc(d.against.no)}`) : ''}
     <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Leaking, wrong item, …">
     ${d.condition !== 'good' ? '<p class="hint">Damaged and expired goods go to the quarantine bin and are not sold.</p>' : ''}`;
   if (d.type === 'sales_invoice') head = `
@@ -487,7 +661,7 @@ function renderDoc(){
     <select id="pty"><option value="">Walk-in customer</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}${p.gstin ? ', ' + esc(p.gstin) : ''}</option>`).join('')}</select>
     ${d.party_id ? `<label for="paid">Payment</label><select id="paid"><option value="1" ${d.paid ? 'selected' : ''}>Paid now at the counter</option><option value="0" ${!d.paid ? 'selected' : ''}>On credit (goes to customer dues)</option></select>` : ''}
     <div class="row">
-      <div><label for="sp">Counter</label><select id="sp"><option value="">None</option>${S.m.sps.filter(s => s.warehouse_id === S.wh).map(s => `<option value="${s.id}" ${s.id === d.sales_point_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div><label for="sp">Counter${d.auto.sp && d.sales_point_id ? ' ✓' : ''}</label><select id="sp"><option value="">None</option>${S.m.sps.filter(s => s.warehouse_id === S.wh).map(s => `<option value="${s.id}" ${s.id === d.sales_point_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
       <div><label for="inc">Prices</label><select id="inc"><option value="1" ${d.incl_tax ? 'selected' : ''}>Include GST (MRP)</option><option value="0" ${!d.incl_tax ? 'selected' : ''}>Exclude GST</option></select></div>
     </div>`;
   if (d.type === 'transfer') head = `
@@ -497,11 +671,13 @@ function renderDoc(){
       ? '<p class="hint">Different GSTIN: this is billed as a tax invoice with GST, and the receiving branch takes the credit.</p>'
       : d.to_wh && d.to_wh !== S.wh ? '<p class="hint">Same GSTIN: a delivery challan is made. No GST.</p>' : ''}
     <label for="tol">Into bin</label>
-    <select id="tol"><option value="">No bin</option>${binsOf(d.to_wh).map(l => `<option value="${l.id}" ${l.id === d.to_loc ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select>`;
+    <select id="tol"><option value="">No bin</option>${binsOf(d.to_wh).map(l => `<option value="${l.id}" ${l.id === d.to_loc ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select>
+    ${d.to_loc && d.auto.toLoc ? note('Suggested: ' + esc(d.auto.toLoc)) : ''}`;
   if (d.type === 'purchase_return') head = `
     <label for="pty">Supplier</label>
     <select id="pty"><option value="">Choose supplier</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-    <label for="agn">Against GRN no. (optional)</label><input id="agn" value="${esc(d.against_no)}" placeholder="GRN/2627/00012">
+    ${d.party_id && d.auto.party ? note('Supplier ' + esc(d.auto.party)) : d.auto.partyHint ? `<p class="hint">${esc(d.auto.partyHint)}</p>` : ''}
+    <label for="agn">Against GRN no. (optional)</label><input id="agn" value="${esc(d.against_no)}" placeholder="Type or scan">
     <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Damaged, expired, excess supply, …">
     <p class="hint">This supplier's own stock goes back first. The rate comes from the GRN when you give its number.</p>`;
   if (d.type.startsWith('adjustment')) head = `
@@ -511,7 +687,9 @@ function renderDoc(){
       <option value="adjustment_out" ${d.type === 'adjustment_out' ? 'selected' : ''}>Found short, remove stock</option></select>`;
 
   const bins = binsOf(S.wh);
-  const binLabel = ['grn','adjustment_in','sales_return'].includes(d.type) ? 'Putting into' : 'Taking from';
+  const incoming = ['grn','adjustment_in','sales_return'].includes(d.type);
+  const binLabel = incoming ? 'Putting into' : 'Taking from';
+  const noBinText = incoming ? 'No bin' : 'Any bin, oldest stock first';
   const totalQty = d.lines.reduce((a, l) => a + num(l.qty), 0);
   const totalVal = cfg.rate ? d.lines.reduce((a, l) => a + num(l.qty) * num(l.rate), 0) : null;
 
@@ -520,13 +698,16 @@ function renderDoc(){
       <label for="ddt">Date</label><input id="ddt" type="date" value="${esc(d.doc_date)}" max="${today()}">
       <p class="hint">${esc(whName(S.wh))}</p>
     </div>
-    <div class="binchip"><div><small>${binLabel}</small><br><strong>${esc(S.bin ? binCode(S.bin) : 'No bin')}</strong></div>
-      <select id="binSel" aria-label="Bin"><option value="">No bin</option>${bins.map(l => `<option value="${l.id}" ${l.id === S.bin ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select></div>
+    <div class="binchip"><div><small>${binLabel}</small><br><strong>${esc(S.bin ? binCode(S.bin) : noBinText)}</strong></div>
+      <select id="binSel" aria-label="Bin"><option value="">${noBinText}</option>${bins.map(l => `<option value="${l.id}" ${l.id === S.bin ? 'selected' : ''}>${esc(l.full_code)}</option>`).join('')}</select></div>
     <div class="panel">
       ${d.lines.length ? d.lines.map((l, ix) => {
         const it = S.m.byId[l.item_id] || {};
         return `<div class="line">
-          <div><div class="nm">${esc(it.name)}</div><div class="sub">${esc(it.sku)}, bin ${esc(l.location_id ? binCode(l.location_id) : 'none')}${it.kit_type === 'bundle' ? ', bundle' : ''}</div></div>
+          <div><div class="nm">${esc(it.name)}</div><div class="sub">${esc(it.sku)}, bin ${esc(l.location_id ? binCode(l.location_id) : incoming ? 'none' : 'any')}${it.kit_type === 'bundle' ? ', bundle' : ''}${!incoming && l.batch_no ? ', batch ' + esc(l.batch_no) : ''}</div>
+            ${incoming && (it.track_batch || it.track_expiry || l.batch_no) ? `<div class="bexp">
+              <label>Batch<input data-b="${ix}" value="${esc(l.batch_no || '')}" autocapitalize="characters"></label>
+              <label>Expiry<input data-e="${ix}" type="date" value="${esc(l.expiry_date || '')}"></label></div>` : ''}</div>
           ${it.track_serial ? `<div class="qty"><b style="font-size:20px">${l.qty}</b></div>` : `<div class="qty"><button data-dec="${ix}" aria-label="Less">−</button><input data-q="${ix}" inputmode="decimal" value="${l.qty}" aria-label="Quantity"><button data-inc="${ix}" aria-label="More">+</button></div>`}
           ${it.track_serial ? `<div class="sers">${(l.serials || []).map((sn, k) => `<span class="ser">${esc(sn)}<button data-sdel="${ix}|${k}" aria-label="Remove ${esc(sn)}">×</button></span>`).join('')}
             <input data-sadd="${ix}" placeholder="Type or scan serial no." aria-label="Add serial number"></div>` : ''}
@@ -539,18 +720,18 @@ function renderDoc(){
     </div>`;
 
   const bind = (id, fn) => { const el = $(id); if (el) el.onchange = fn; };
-  bind('#pty', e => { d.party_id = e.target.value; if (d.type === 'grn'){ d.order_id = ''; d.po = null; loadPoOptions(); } else renderDoc(); });
+  bind('#pty', e => { d.party_id = e.target.value; d.auto.party = ''; d.auto.partyHint = ''; if (d.type === 'grn'){ d.order_id = ''; d.po = null; loadPoOptions(true); } else renderDoc(); });
   bind('#por', e => { d.order_id = e.target.value; loadPoLines(); });
-  bind('#agn', e => { d.against_no = e.target.value.trim(); });
+  bind('#agn', e => { d.against_no = e.target.value.trim().toUpperCase(); lookupAgainst(); });
   bind('#cnd', e => { d.condition = e.target.value; renderDoc(); });
   bind('#rsn', e => { d.reason = e.target.value.trim(); });
   bind('#paid', e => { d.paid = e.target.value === '1'; });
   bind('#pdn', e => { d.party_doc_no = e.target.value.trim(); });
   bind('#pdd', e => { d.party_doc_date = e.target.value; });
-  bind('#sp',  e => { d.sales_point_id = e.target.value; });
+  bind('#sp',  e => { d.sales_point_id = e.target.value; d.auto.sp = ''; if (e.target.value) LS.set('wms.sp.' + S.wh, e.target.value); });
   bind('#inc', e => { d.incl_tax = e.target.value === '1'; });
-  bind('#tow', e => { d.to_wh = e.target.value; d.to_loc = ''; renderDoc(); });
-  bind('#tol', e => { d.to_loc = e.target.value; });
+  bind('#tow', e => { d.to_wh = e.target.value; d.to_loc = ''; d.auto.toLoc = ''; renderDoc(); autoIntoBin(); });
+  bind('#tol', e => { d.to_loc = e.target.value; d.auto.toLoc = ''; renderDoc(); });
   bind('#adj', e => { d.type = e.target.value; renderDoc(); });
   bind('#ddt', e => { d.doc_date = e.target.value; });
   bind('#binSel', e => { S.bin = e.target.value || null; renderDoc(); });
@@ -558,6 +739,8 @@ function renderDoc(){
   document.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { const l = d.lines[b.dataset.dec]; l.qty = Math.max(0, +(num(l.qty) - 1).toFixed(3)); renderDoc(); });
   document.querySelectorAll('[data-q]').forEach(i => i.onchange = () => { d.lines[i.dataset.q].qty = num(i.value); renderDoc(); });
   document.querySelectorAll('[data-r]').forEach(i => i.onchange = () => { d.lines[i.dataset.r].rate = num(i.value); renderDoc(); });
+  document.querySelectorAll('[data-b]').forEach(i => i.onchange = () => { d.lines[i.dataset.b].batch_no = i.value.trim().toUpperCase() || null; });
+  document.querySelectorAll('[data-e]').forEach(i => i.onchange = () => { d.lines[i.dataset.e].expiry_date = i.value || null; });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { d.lines.splice(b.dataset.del, 1); renderDoc(); });
   document.querySelectorAll('[data-sdel]').forEach(b => b.onclick = () => { const [ix, k] = b.dataset.sdel.split('|').map(Number); const l = d.lines[ix];
     l.serials.splice(k, 1); l.qty = l.serials.length; if (!l.qty) d.lines.splice(ix, 1); renderDoc(); });
@@ -565,12 +748,13 @@ function renderDoc(){
     addSerial(S.m.byId[l.item_id], i.value, l.barcode); S.bin = prev; renderDoc(); });
 }
 
-async function loadPoOptions(){
+async function loadPoOptions(autoPick){
   const d = S.doc; d.poOptions = [];
   if (d.party_id){
     const {data} = await S.sb.from('v_orders').select('id,order_no,pending_qty,warehouse').eq('tenant_id', S.tenant)
       .eq('order_type', 'purchase').eq('status', 'confirmed').eq('party_id', d.party_id).gt('pending_qty', 0).order('order_date');
     d.poOptions = (data || []).filter(o => o.warehouse === whName(S.wh));
+    if (autoPick && !d.order_id && d.poOptions.length === 1){ d.order_id = d.poOptions[0].id; d.auto.po = true; return loadPoLines(); }
   }
   if (S.view === 'doc' && S.doc === d) renderDoc();
 }
@@ -583,6 +767,7 @@ async function loadPoLines(){
     const {data:ol} = await S.sb.from('order_lines').select('id,unit_factor').eq('order_id', d.order_id);
     const f = Object.fromEntries((ol || []).map(x => [x.id, x.unit_factor]));
     d.po = (data || []).map(x => ({...x, unit_factor:f[x.order_line_id] || 1}));
+    d.lines.forEach(l => { const p = d.po.find(x => x.item_id === l.item_id); if (p && !l.order_line_id){ l.rate = num(p.rate) / num(p.unit_factor || 1); l.discount_pct = num(p.discount_pct); l.order_line_id = p.order_line_id; } });
   }
   renderDoc();
 }
@@ -596,6 +781,11 @@ function validateDoc(d){
   if (d.type === 'transfer' && !d.to_wh) return 'Choose where the stock is going.';
   if (d.type === 'transfer' && d.to_wh === S.wh && !d.to_loc) return 'Choose the bin to move into.';
   if (d.type === 'purchase_return' && !d.party_id) return 'Choose the supplier.';
+  if (['grn','adjustment_in'].includes(d.type)){
+    const nb = lines.find(l => { const it = S.m.byId[l.item_id] || {}; return (it.track_batch && !l.batch_no) || (it.track_expiry && !l.expiry_date); });
+    if (nb){ const it = S.m.byId[nb.item_id]; return `Enter the ${it.track_batch && !nb.batch_no ? 'batch' : 'expiry date'} for ${it.name}, or scan its GS1 barcode.`; }
+  }
+  if (d.type === 'sales_return' && d.against_no && !d.against) return `Invoice ${d.against_no} was not found. Check the number or clear it.`;
   if (d.type === 'purchase_return' && !d.reason) return 'Enter the reason for the return.';
   const bad = lines.find(l => (S.m.byId[l.item_id] || {}).track_serial && (l.serials || []).length !== num(l.qty));
   if (bad) return `Scan a serial number for each unit of ${S.m.byId[bad.item_id].name}.`;
@@ -613,7 +803,8 @@ function buildPayload(d, post){
     to_warehouse_id:d.type === 'transfer' ? d.to_wh : null,
     sales_point_id:d.sales_point_id || null,
     place_of_supply:d.type === 'sales_invoice' && party?.state_code ? party.state_code : null,
-    prices_include_tax:d.type === 'sales_invoice' ? d.incl_tax : false,
+    prices_include_tax:['sales_invoice','sales_return'].includes(d.type) ? d.incl_tax : false,
+    against_doc_id:d.against ? d.against.id : null,
     order_id:d.order_id || null, reason:d.reason || null,
     paid_at_counter:d.type === 'sales_invoice' ? (!d.party_id || d.paid) : false
   };
@@ -622,6 +813,7 @@ function buildPayload(d, post){
     to_location_id:d.type === 'transfer' ? (d.to_loc || null) : null,
     qty:num(l.qty), rate:l.rate === null || l.rate === '' ? null : num(l.rate),
     discount_pct:l.discount_pct ?? null, order_line_id:l.order_line_id || null,
+    batch_no:l.batch_no || null, expiry_date:l.expiry_date || null,
     condition:d.type === 'sales_return' ? d.condition : 'good'
   }));
   const serials = {};
@@ -694,6 +886,7 @@ async function submitDoc(post){
   const d = S.doc, err = validateDoc(d);
   if (err) return toast(err, 'err');
   const p = buildPayload(d, post);
+  if (d.type === 'sales_invoice' && d.sales_point_id) LS.set('wms.sp.' + S.wh, d.sales_point_id);
   const btns = [$('#postBtn'), $('#saveDraftBtn')]; btns.forEach(b => b.disabled = true);
   try{
     if (!navigator.onLine) throw Object.assign(new Error('offline'), {offline:true});
