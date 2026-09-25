@@ -96,6 +96,12 @@
         if (Math.abs(invNet - ourNet) > Math.max(0.01, ourNet * 0.005))
           row.problems.push(`${withFree ? 'Cost per unit incl. free goods' : 'Rate'}: invoice ₹${r2(invNet)} per ${rec.uom || 'unit'}, ours ₹${r2(ourNet)}`);
       }
+      if (ctx.three_way && rec.po_rate !== null && rec.po_rate !== undefined){
+        const invNet = num(inv.rate) / (fx.f || 1) * (1 - num(inv.discount_pct) / 100), poNet = num(rec.po_rate) * (1 - num(rec.po_discount) / 100);
+        row.po_rate = r2(poNet);
+        if (inv.rate !== null && inv.rate !== undefined && Math.abs(invNet - poNet) > Math.max(0.01, poNet * 0.005))
+          row.problems.push(`${invNet > poNet ? 'Billed above' : 'Billed below'} the purchase order: invoice ₹${r2(invNet)}, PO ₹${r2(poNet)} per ${rec.uom || 'unit'}`);
+      }
       if (inv.gst_rate !== null && inv.gst_rate !== undefined && rec.gst_rate !== null && rec.gst_rate !== undefined && num(inv.gst_rate) !== num(rec.gst_rate))
         row.problems.push(`GST: invoice ${num(inv.gst_rate)}%, ours ${num(rec.gst_rate)}%`);
       if (inv.taxable_value !== null && inv.taxable_value !== undefined && rec.taxable_value !== null && rec.taxable_value !== undefined
@@ -122,6 +128,17 @@
       head.push(Math.abs(diff) <= Math.max(1, Math.abs(num(t.round_off)) + 0.5) ? {ok:true, text:`Invoice total ₹${r2(t.total)}${num(t.other_charges) ? ` (incl. ₹${r2(t.other_charges)} charges)` : ''}`}
         : {ok:false, text:`Invoice total ₹${r2(t.total)}${num(t.other_charges) ? ` incl. ₹${r2(t.other_charges)} charges` : ''}; ours ₹${r2(ctx.doc_total)} (difference ₹${diff})`});
     }
+    if (ctx.qr){
+      const q = ctx.qr;
+      if (q.DocNo) head.push(sameNo(q.DocNo, invoice.invoice_no || ctx.party_doc_no) ? {ok:true, text:`E-invoice QR: bill no. ${q.DocNo}, IRN ${String(q.Irn || '').slice(0, 10)}…`}
+                                                                                : {ok:false, text:`E-invoice QR says bill no. ${q.DocNo}; the bill reads ${invoice.invoice_no || ctx.party_doc_no || '(none)'}`});
+      if (q.TotInvVal !== undefined && t.total !== null && t.total !== undefined && Math.abs(num(q.TotInvVal) - num(t.total)) > 1)
+        head.push({ok:false, text:`E-invoice QR total ₹${r2(q.TotInvVal)} differs from the bill total ₹${r2(t.total)}`});
+      if (q.ItemCnt && lines.length && num(q.ItemCnt) !== lines.length) head.push({ok:false, text:`E-invoice QR lists ${q.ItemCnt} items; ${lines.length} were read from the bill`});
+      if (q.SellerGstin && ctx.party_gstin && String(q.SellerGstin).toUpperCase() !== String(ctx.party_gstin).toUpperCase())
+        head.push({ok:false, text:`E-invoice QR seller GSTIN ${q.SellerGstin} is not our supplier's ${ctx.party_gstin}`});
+    }
+    (ctx.duplicates || []).forEach(dp => head.push({ok:false, text:`This bill is already on ${dp.doc_no} (${dp.how})`}));
     const qtyOk = rows.every(r => r.status === 'ok' || r.status === 'amount') && !notOnInvoice.length && rows.length > 0;
     const allOk = qtyOk && rows.every(r => r.status === 'ok') && head.every(h => h.ok);
     return {status:allOk ? 'matched' : 'differences', quantities_match:qtyOk, rows, extra:notOnInvoice, head,
@@ -132,5 +149,27 @@
   // what to remember for next time: this supplier's wording -> our item
   const learnRows = (result, partyId, tenantId) => result.rows.filter(r => r.item_id && r.description)
     .map(r => ({tenant_id:tenantId, party_id:partyId, supplier_text:key(r.description), item_id:r.item_id, factor:r.factor || 1, updated_at:new Date().toISOString()}));
-  root.WMSInvoice = {compare, learnRows, norm, sim, key};
+  // GST e-invoice QR: a signed token from the IRP. Returns its fields, or null if it is not one.
+  function parseEInvoiceQR(text){
+    const t = String(text || '').trim();
+    const parts = t.split('.');
+    if (parts.length !== 3 || t.length < 200 || !/^[A-Za-z0-9_-]+$/.test(parts[1])) return null;
+    try{
+      const b = parts[1].replace(/-/g, '+').replace(/_/g, '/'), pad = b + '='.repeat((4 - b.length % 4) % 4);
+      const raw = typeof atob === 'function' ? decodeURIComponent(escape(atob(pad))) : Buffer.from(pad, 'base64').toString('utf8');
+      let p = JSON.parse(raw); if (typeof p.data === 'string') p = JSON.parse(p.data); else if (p.data) p = p.data;
+      if (!p.Irn && !p.SellerGstin) return null;
+      const dt = String(p.DocDt || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      return {SellerGstin:p.SellerGstin, BuyerGstin:p.BuyerGstin, DocNo:p.DocNo, DocTyp:p.DocTyp, DocDt:dt ? `${dt[3]}-${dt[2]}-${dt[1]}` : p.DocDt,
+              TotInvVal:p.TotInvVal, ItemCnt:p.ItemCnt, MainHsnCode:p.MainHsnCode, Irn:p.Irn ? String(p.Irn).toLowerCase() : null, IrnDt:p.IrnDt};
+    }catch(e){ return null; }
+  }
+  // blind receiving: what to recount, never the expected quantity
+  function blindSummary(result){
+    const recount = result.rows.filter(r => r.status === 'qty').map(r => r.item_name)
+      .concat(result.extra.map(r => r.item_name + ' (not on the bill)'));
+    const missing = result.rows.filter(r => r.status === 'missing').length;
+    return {ok:result.quantities_match, recount, missing};
+  }
+  root.WMSInvoice = {compare, learnRows, norm, sim, key, parseEInvoiceQR, blindSummary};
 })(typeof window !== 'undefined' ? window : globalThis);
