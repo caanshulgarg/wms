@@ -326,7 +326,8 @@ async function loadMasters(){
       fetchAll('sales_points', 'id,name,sp_type,warehouse_id,is_active')
     ]);
     const units = await fetchAll('item_units', 'item_id,unit,factor').catch(() => []);
-    m = {items, bcs, locs, parties, whs, sps, units, at:Date.now()};
+    const settings = (await fetchAll('company_settings', 'invoice_check_on,blind_receiving,po_three_way,einvoice_qr_on').catch(() => []))[0] || {};
+    m = {items, bcs, locs, parties, whs, sps, units, settings, at:Date.now()};
     LS.set(key, m);
   }catch(e){
     m = LS.get(key, null);
@@ -334,7 +335,7 @@ async function loadMasters(){
     else toast('Offline: using the item list saved on this phone.');
   }
   const act = a => a.filter(x => x.is_active !== false);
-  S.m.units = m.units || [];
+  S.m.units = m.units || []; S.m.settings = m.settings || {};
   S.m.items = act(m.items).filter(i => !i.is_template); S.m.locs = act(m.locs); S.m.parties = act(m.parties); S.m.whs = act(m.whs); S.m.sps = act(m.sps);
   S.m.byId = {}; S.m.bySku = {}; S.m.barcodes = {};
   S.m.items.forEach(i => { S.m.byId[i.id] = i; S.m.bySku[i.sku.toUpperCase()] = i; });
@@ -442,6 +443,10 @@ function onScan(raw){
     if (S.view === 'count') renderCount();
     return;
   }
+  if (S.view === 'doc' && S.doc.type === 'grn' && setOn('einvoice_qr_on') && window.WMSInvoice){
+    const qr = WMSInvoice.parseEInvoiceQR(String(raw || '').trim());
+    if (qr) return applyQR(qr);
+  }
   const gs1 = S.m.barcodes[code] || S.m.bySku[code] ? null : parseGS1(String(raw || '').trim());   // a registered barcode always wins
   if (gs1){
     const hit = itemByGtin(gs1.gtin);
@@ -512,6 +517,36 @@ function startDoc(type){
 }
 
 /* ---------- Supplier invoice check while receiving ---------- */
+const setOn = k => (S.m.settings || {})[k] !== false;                         // settings default to on
+const isBlind = () => setOn('blind_receiving') && !['owner','admin'].includes(S.role);
+async function findDuplicates(d, irn){
+  if (!navigator.onLine) return [];
+  const {data} = await S.sb.rpc('duplicate_bill', {p_tenant:S.tenant, p_doc:null, p_irn:irn || null, p_party:d.party_id || null, p_bill_no:d.party_doc_no || null});
+  return data || [];
+}
+// e-invoice QR on the supplier's bill: fills the bill details and checks it is not already entered
+async function applyQR(qr){
+  const d = S.doc; const notes = [];
+  const p = S.m.parties.find(x => x.gstin && qr.SellerGstin && x.gstin.toUpperCase() === String(qr.SellerGstin).toUpperCase());
+  if (!d.party_id && p){ d.party_id = p.id; d.auto.party = 'from the e-invoice QR'; if (d.type === 'grn') loadPoOptions(true); }
+  else if (d.party_id && p && p.id !== d.party_id) notes.push(`The QR is from ${p.name}, not the supplier chosen.`);
+  else if (!p && qr.SellerGstin) notes.push(`Supplier GSTIN ${qr.SellerGstin} is not in your parties. Add it in the office app.`);
+  if (!d.party_doc_no) d.party_doc_no = String(qr.DocNo || '');
+  else if (qr.DocNo && d.party_doc_no.toUpperCase().replace(/[^A-Z0-9]/g, '') !== String(qr.DocNo).toUpperCase().replace(/[^A-Z0-9]/g, '')) notes.push(`The QR says bill no. ${qr.DocNo}; ${d.party_doc_no} was entered.`);
+  if (qr.DocDt) d.party_doc_date = qr.DocDt;
+  const wh = S.m.whs.find(w => w.id === S.wh) || {};
+  if (qr.BuyerGstin && wh.gstin && String(qr.BuyerGstin).toUpperCase() !== wh.gstin.toUpperCase()) notes.push(`This bill is made out to GSTIN ${qr.BuyerGstin}, not this warehouse (${wh.gstin}).`);
+  d.qr = qr; d.qrNotes = notes; d.dups = await findDuplicates(d, qr.Irn);
+  if (d.dups.length || notes.length) beep(false); else beep();
+  if (d.invRaw) return runInvoiceCompare();
+  renderDoc();
+}
+function qrHtml(d){
+  if (!d.qr && !(d.dups || []).length) return '';
+  const q = d.qr || {}, bad = (d.qrNotes || []).length || (d.dups || []).length;
+  return `<div class="invres ${bad ? 'bad' : 'ok'}">${d.qr ? `<b>${bad ? '⚠' : '✓'} E-invoice QR read</b><div class="sub" style="color:inherit">Bill ${esc(q.DocNo || '')} of ${esc(q.DocDt || '')}${isBlind() ? '' : `, ₹${fmt(q.TotInvVal)}, ${esc(q.ItemCnt)} item(s)`}</div>` : ''}
+    ${(d.qrNotes || []).length || (d.dups || []).length ? `<ul>${(d.qrNotes || []).map(n => `<li>${esc(n)}</li>`).join('')}${(d.dups || []).map(x => `<li>Already entered on ${esc(x.doc_no)} (${esc(x.how)}). Do not receive it twice.</li>`).join('')}</ul>` : ''}</div>`;
+}
 const fileB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
 function recFromLines(d){
   const by = {};
@@ -549,7 +584,13 @@ async function runInvoiceCompare(){
   let learned = [];
   if (d.party_id && navigator.onLine){ const {data} = await S.sb.from('item_supplier_names').select('supplier_text,item_id,factor').eq('party_id', d.party_id); learned = data || []; }
   const party = S.m.parties.find(p => p.id === d.party_id) || {}, wh = S.m.whs.find(w => w.id === S.wh) || {};
-  const res = WMSInvoice.compare(inv, recFromLines(d), {party_doc_no:d.party_doc_no, party_gstin:party.gstin, our_gstins:[wh.gstin].filter(Boolean), doc_total:null, learned});
+  const rec = recFromLines(d);
+  if (setOn('po_three_way') && d.po) rec.forEach(r => { const pl = d.po.find(x => x.item_id === r.item_id); if (pl){ r.po_rate = num(pl.rate) / num(pl.unit_factor || 1); r.po_discount = num(pl.discount_pct); } });
+  const irn = (d.qr && d.qr.Irn) || (/^[0-9a-f]{64}$/i.test(inv.irn || '') ? String(inv.irn).toLowerCase() : null);
+  if (irn && !d.qr) d.dups = await findDuplicates(d, irn);
+  d.irn = irn;
+  const res = WMSInvoice.compare(inv, rec, {party_doc_no:d.party_doc_no, party_gstin:party.gstin, our_gstins:[wh.gstin].filter(Boolean), doc_total:null, learned,
+                                            three_way:setOn('po_three_way'), qr:d.qr || null, duplicates:d.dups || []});
   // batch and expiry printed on the bill go onto matched lines that have none
   res.rows.forEach(r => { if (!r.item_id || (!r.batch && !r.expiry)) return;
     d.lines.filter(l => l.item_id === r.item_id && !l.batch_no).forEach(l => { l.batch_no = r.batch || l.batch_no; l.expiry_date = r.expiry || l.expiry_date; }); });
@@ -558,6 +599,12 @@ async function runInvoiceCompare(){
   renderDoc();
 }
 function invResultHtml(r){
+  if (isBlind()){
+    const b = WMSInvoice.blindSummary(r);
+    return `<div class="invres ${b.ok ? 'ok' : 'bad'}"><b>${b.ok ? '✓ Your count matches the supplier invoice' : '✗ Your count does not match the supplier invoice'}</b>
+      ${b.recount.length ? `<ul>${b.recount.map(n => `<li>Recount ${esc(n)}</li>`).join('')}</ul>` : ''}${b.missing ? `<div class="sub" style="color:inherit">${b.missing} item(s) on the bill were not scanned. Look for them.</div>` : ''}
+      <div class="sub">The office sees the full comparison.</div></div>`;
+  }
   const bad = r.rows.filter(x => x.status !== 'ok').concat(r.extra), hb = r.head.filter(h => !h.ok);
   return `<div class="invres ${r.status === 'matched' ? 'ok' : 'bad'}"><b>${r.status === 'matched' ? '✓ Matches the supplier invoice' : r.quantities_match ? 'Quantities match; amounts differ' : '✗ Does not match the supplier invoice'}</b>
     ${bad.concat(hb).length ? `<ul>${hb.map(h => `<li>${esc(h.text)}</li>`).join('')}${bad.map(x => `<li>${esc(x.item_name || x.description)}: ${esc(x.problems.join('; '))}</li>`).join('')}</ul>` : ''}
@@ -702,13 +749,15 @@ function renderDoc(){
     ${d.party_id && d.auto.party ? note('Supplier ' + esc(d.auto.party)) : d.auto.partyHint ? `<p class="hint">${esc(d.auto.partyHint)}</p>` : ''}
     <div class="row"><div><label for="pdn">Supplier bill no.</label><input id="pdn" value="${esc(d.party_doc_no)}"></div>
     <div><label for="pdd">Bill date</label><input id="pdd" type="date" value="${esc(d.party_doc_date)}"></div></div>
-    <button class="btn" id="invBtn" style="margin-top:12px;width:100%">${d.inv ? 'Check again with the supplier invoice' : 'Check with the supplier invoice (photo or PDF)'}</button>
+    ${qrHtml(d)}
+    ${setOn('invoice_check_on') ? `<button class="btn" id="invBtn" style="margin-top:12px;width:100%">${d.inv ? 'Check again with the supplier invoice' : 'Check with the supplier invoice (photo or PDF)'}</button>
     <input type="file" id="invFile" accept="application/pdf,image/*" capture="environment" class="hidden">
-    ${d.inv ? invResultHtml(d.inv) : ''}
+    ${d.inv ? invResultHtml(d.inv) : ''}` : ''}
+    ${setOn('einvoice_qr_on') && !d.qr ? '<p class="hint">Tip: scan the e-invoice QR on the bill to fill in its details.</p>' : ''}
     <label for="por">Against purchase order</label>
     <select id="por"><option value="">No order</option>${(d.poOptions || []).map(o => `<option value="${o.id}" ${o.id === d.order_id ? 'selected' : ''}>${esc(o.order_no)}, ${fmt(o.pending_qty)} pending</option>`).join('')}</select>
     ${d.po ? `<div style="margin-top:10px">${d.po.map(p => { const got = d.lines.filter(l => l.item_id === p.item_id).reduce((a, l) => a + num(l.qty), 0);
-        return `<div class="sub" style="display:flex;justify-content:space-between;padding:3px 0"><span>${esc(p.item_name)}</span><span>${fmt(got)} of ${fmt(p.pending_qty)}</span></div>`; }).join('')}</div>` : ''}`;
+        return `<div class="sub" style="display:flex;justify-content:space-between;padding:3px 0"><span>${esc(p.item_name)}</span><span>${isBlind() ? fmt(got) + ' scanned' : `${fmt(got)} of ${fmt(p.pending_qty)}`}</span></div>`; }).join('')}</div>` : ''}`;
   if (d.type === 'sales_return') head = `
     <label for="pty">Customer</label>
     <select id="pty"><option value="">Walk-in customer</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
@@ -888,8 +937,9 @@ function buildPayload(d, post){
                                 item_name:r.item_name, inv_rate:r.inv_rate, our_rate:r.our_rate, status:r.status, problems:r.problems, factor:r.factor})), extra:d.inv.extra},
       learn:d.party_id ? WMSInvoice.learnRows(d.inv, d.party_id, S.tenant) : []} : null;
   const queuedAt = new Date().toISOString();
+  const einv = d.type === 'grn' && (d.irn || (d.qr && d.qr.Irn)) ? {irn:d.irn || d.qr.Irn, qr:d.qr || null} : null;
   if (invCheck && d.invFile) (S.invFiles = S.invFiles || {})[queuedAt] = d.invFile;
-  return {tenant:S.tenant, prefix:DOC[d.type].prefix, header, lines, serials, post, against_no:d.against_no || null, queuedAt, invCheck};
+  return {tenant:S.tenant, prefix:DOC[d.type].prefix, header, lines, serials, post, against_no:d.against_no || null, queuedAt, invCheck, einv};
 }
 
 async function nextDocNo(type, prefix, table='documents', col='doc_no'){
@@ -933,6 +983,7 @@ async function sendPayload(p){
     await S.sb.rpc('set_invoice_check', {p_doc:docId, p_result:p.invCheck.result, p_status:p.invCheck.status, p_file:path});
     if (p.invCheck.learn && p.invCheck.learn.length) await S.sb.from('item_supplier_names').upsert(p.invCheck.learn, {onConflict:'party_id,supplier_text'});
   }
+  if (p.einv) await S.sb.rpc('set_supplier_einvoice', {p_doc:docId, p_irn:p.einv.irn, p_qr:p.einv.qr});
   if (p.post){ await postWithPrompts(docId, docNo); docNo = await finalNo(docId); }
   return {no:docNo, id:docId};
 }
