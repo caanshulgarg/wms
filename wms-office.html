@@ -13,6 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="wms-print.js"></script>
 <script src="wms-tally.js"></script>
+<script src="wms-invoice.js"></script>
 <style>
 :root{
   --concrete:#E4E2DC; --panel:#FFFFFF; --ink:#16213A; --ink2:#24345A; --muted:#5C6474;
@@ -53,6 +54,11 @@ nav .nonav{padding:10px 18px;color:#8E9BBB;font-size:13px}
 .autostat.on{border-left-color:#1D6B3A;background:#EEF7F1}.autostat.warn{border-left-color:#B25E00;background:#FFF6EA}
 label.chk{display:flex;gap:8px;align-items:center;margin:10px 0;font-weight:500}
 ul.plist{margin:4px 0 10px 18px;padding:0}ul.plist li{margin:2px 0}.muted{color:var(--muted)}
+.ckhead{padding:10px 12px;border-radius:6px;font-weight:600;margin-bottom:8px}.ckhead.ok{background:#EEF7F1;color:#1D6B3A}.ckhead.bad{background:#FFF1EE;color:#A1331C}
+ul.cklist{list-style:none;margin:0 0 10px;padding:0}ul.cklist li{padding:2px 0}ul.cklist li.bad{color:#A1331C}ul.cklist li.ok{color:#1D6B3A}
+.tablewrap.ck{margin:0 0 8px;max-height:52vh;overflow:auto}.tablewrap.ck td,.tablewrap.ck th{padding:6px 8px;vertical-align:top}.tablewrap.ck td.n,.tablewrap.ck th.n{text-align:right}
+.tablewrap.ck select{max-width:230px}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12.5px;font-weight:600;white-space:nowrap}.tag.ok{background:#E3F2E8;color:#1D6B3A}.tag.warn{background:#FFF1DC;color:#8A4B00}.tag.bad{background:#FDE5E0;color:#A1331C}
 nav a .sub{color:#8E9BBB;font-weight:400}
 .tabs{flex-basis:100%;order:2;display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line,#D9DEE8);margin-top:4px;scrollbar-width:thin}
 .tabs a{padding:9px 14px 8px;white-space:nowrap;color:#4A5570;text-decoration:none;border-bottom:3px solid transparent;font-weight:500;font-size:14px}
@@ -257,6 +263,19 @@ const REPORTS = [
   {group:'Home', id:'dashboard', title:'Dashboard', custom:true, cols:[], sort:['none','asc']},
   {group:'Stock', id:'bins', title:'Stock by bin', src:'v_stock_by_location', sort:['item_name','asc'],
    cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), N('qty_on_hand','Qty', {sum:true}), M('stock_value','Value')]},
+  {group:'Stock', id:'lots', title:'Stock by supplier invoice', src:'v_lots', sort:['inward_date','desc'],
+   where:q => S.lotsAll ? q : q.gt('qty_remaining', 0),
+   note:'Every lot with the supplier invoice it came from, also after moving to another warehouse. Purchase cost is the landed cost on that bill (with its share of freight and charges); current cost differs only under weighted average valuation.',
+   tools:[{label:'Include used-up lots', fn:() => { S.lotsAll = !S.lotsAll; toast(S.lotsAll ? 'Showing used-up lots too.' : 'Showing lots in stock only.'); load(); }}],
+   prep:r => ({...r, check_label:{matched:'Matches', differences:'Differences'}[r.invoice_check_status] || (r.came_from === 'grn' ? 'Not checked' : ''),
+               from_label:r.moved_from_other_warehouse ? 'Transferred in' : DOC_LABEL[r.came_from] || r.came_from || ''}),
+   actions:r => [{label:'Where it went', fn:() => lotTrail({lot_id:r.lot_id, title:r.lot_code + ', ' + r.item_name})},
+                 r.source_doc_id && {label:'Open supplier invoice', fn:() => openInvoiceFile(null, r.source_doc_id)}],
+   cols:[T('lot_code','Lot'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), T('supplier','Supplier'),
+         T('supplier_invoice_no','Supplier invoice'), D('supplier_invoice_date','Invoice date'), T('source_doc_no','GRN / source'), C('from_label','Came as'),
+         C('check_label','Invoice check'), T('batch_no','Batch'), D('expiry_date','Expiry'), D('inward_date','Received on'),
+         N('qty_in','Received', {sum:true}), N('qty_remaining','In stock', {sum:true}), M('purchase_cost','Purchase cost'), M('invoice_rate','Invoice rate'),
+         M('current_cost','Current cost'), M('stock_value','Stock value')]},
   {group:'Stock', id:'summary', title:'Stock summary', rpc:'stock_summary', params:'period', sort:['item_name','asc'],
    note:'Opening, inward, outward and closing for the period. Value is at cost (FIFO).',
    cols:[T('item_name','Item'), T('sku','SKU'), C('hsn_code','HSN'), C('warehouse','Warehouse'), N('opening','Opening', {sum:true}),
@@ -285,19 +304,24 @@ const REPORTS = [
          D('last_in_date','Last received'), D('last_out_date','Last sold'), N('days_without_sale','Days without sale'), C('movement','Movement')]},
 
   {group:'Documents', id:'docs', title:'All documents', src:'v_documents', range:'doc_date', sort:['doc_date','desc'],
-   prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type, created_by_name:userOf(r.created_by), status_label:cap(r.status)}),
+   prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type, created_by_name:userOf(r.created_by), status_label:cap(r.status),
+               check_label:{matched:'Matches', differences:'Differences'}[r.invoice_check_status] || (r.doc_type === 'grn' ? 'Not checked' : '')}),
    tools:[{label:'E-way JSON for shown rows', fn:() => gstBulk('ewaybill')}, {label:'E-invoice JSON for shown rows', fn:() => gstBulk('einvoice')}],
    actions:r => [
      r.status !== 'draft' && {label:'Print', fn:() => printDoc(r.id)},
      r.status === 'posted' && ['sales_invoice','sales_return','transfer'].includes(r.doc_type) && {label:'E-invoice', fn:() => gstOne(r, 'einvoice')},
      r.status === 'posted' && ['sales_invoice','purchase_return','transfer'].includes(r.doc_type) && {label:'E-way', fn:() => gstOne(r, 'ewaybill')},
      r.status === 'posted' && {label:'IRN / e-way no.', fn:() => gstRefsForm(r)},
+     ['grn','purchase_return'].includes(r.doc_type) && r.status !== 'cancelled' && {label:'Check supplier invoice', fn:() => invoiceCheck(r)},
+     r.invoice_file && {label:'Open supplier invoice', fn:() => openInvoiceFile(r.invoice_file)},
+     r.invoice_check_status && {label:'Invoice check result', fn:() => showSavedCheck(r)},
+     r.status === 'posted' && ['grn','opening','adjustment_in'].includes(r.doc_type) && {label:'Where its stock went', fn:() => lotTrail({source_doc_id:r.id, title:r.doc_no + (r.party_doc_no ? ', bill ' + r.party_doc_no : '')})},
      r.status === 'draft' && {label:'Post', fn:() => postDoc(r.id, r.doc_no)},
      r.status === 'draft' && {label:'Serial numbers', fn:() => serialsForm(r)},
      r.status === 'posted' && ['grn','purchase_return'].includes(r.doc_type) && {label:r.doc_type === 'grn' ? 'Make supplier bill' : 'Make debit note', fn:() => makeBill(r)},
      r.status === 'posted' && {label:'Cancel', warn:true, fn:() => cancelDoc(r)}],
    cols:[D('doc_date','Date'), C('doc_label','Type'), T('doc_no','Number'), C('status_label','Status'), T('order_no','Order'), C('warehouse','Warehouse'), C('to_warehouse','To warehouse'),
-         T('party','Party'), T('party_gstin','GSTIN'), C('sales_point','Counter'), T('party_doc_no','Supplier bill'), N('line_count','Lines'),
+         T('party','Party'), T('party_gstin','GSTIN'), C('sales_point','Counter'), T('party_doc_no','Supplier bill'), C('check_label','Invoice check'), N('line_count','Lines'),
          N('total_qty','Qty', {sum:true}), M('taxable_value','Taxable'), M('gst_amount','GST'), M('doc_value','Value'),
          T('eway_bill_no','E-way bill'), T('irn','IRN'), C('created_by_name','Entered by'), T('reason','Reason'), Y('paid_at_counter','Paid at counter')]},
 
@@ -586,7 +610,7 @@ const REPORTS = [
    actions:r => [{label:'Edit', fn:() => editForm('company_settings', r)}],
    prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO'}),
    cols:[D('books_lock_date','Books locked up to'), C('cost_label','Stock valuation'), C('neg','Negative stock'), N('near_expiry_days','Near-expiry days'), N('po_excess_pct','Allowed excess over PO %'),
-         Y('warn_below_cost','Warn below cost'), C('timezone','Time zone')]},
+         Y('warn_below_cost','Warn below cost'), Y('grn_needs_invoice_match','GRN needs matching invoice'), C('timezone','Time zone')]},
   {group:'Settings', id:'backdate', title:'Back-date limits', src:'role_backdate_limits', sort:['role','asc'],
    note:'How many days back each role can post entries. A role not listed has no limit (the lock date still applies).',
    tools:[{label:'Add limit', fn:() => editForm('role_backdate_limits')}],
@@ -761,6 +785,7 @@ async function load(){
       const size = 1000, cap = 50000;
       for (let from = 0; from < cap; from += size){
         let q = S.sb.from(rep.src).select('*').eq(rep.tenantCol || 'tenant_id', S.tenant);
+        if (rep.where) q = rep.where(q);
         if (rep.range){
           q = q.gte(rep.range, S.params.from).lte(rep.range, rep.range === 'at' ? S.params.to + 'T23:59:59.999+05:30' : S.params.to);
         }
@@ -970,7 +995,7 @@ const NAV = [
     {t:'Dashboard', tabs:[['dashboard']]},
     {t:'Approvals', tabs:[['approvals']]} ]],
   ['Stock', [
-    {t:'Stock position', tabs:[['bins','By bin'], ['available','Available to sell'], ['summary','Period summary'], ['variants','By variant']]},
+    {t:'Stock position', tabs:[['bins','By bin'], ['lots','By supplier invoice'], ['available','Available to sell'], ['summary','Period summary'], ['variants','By variant']]},
     {t:'Item ledger', tabs:[['ledger']]},
     {t:'Serial numbers', tabs:[['serials','Serial numbers'], ['serialhist','History']]},
     {t:'Kits and bundles', tabs:[['kits']]},
@@ -1465,6 +1490,7 @@ const CRUD = {
     {k:'near_expiry_days', label:'Warn when a batch expires within (days)', type:'int', req:true},
     {k:'po_excess_pct', label:'Allowed receipt over purchase order (%)', type:'num', req:true},
     {k:'warn_below_cost', label:'Warn when selling below cost', type:'check'},
+    {k:'grn_needs_invoice_match', label:'Post goods received only after the supplier invoice matches', type:'check'},
     {k:'timezone', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
   role_backdate_limits:{table:'role_backdate_limits', noun:'limit', key:['tenant_id','role'], upsert:true, fields:[
     {k:'role', label:'Role', type:'select', options:() => opt(ROLE_LABEL), req:true},
@@ -2052,6 +2078,146 @@ async function tallySend(){
     load();
   }catch(e){ toast(/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'The Tally Bridge is not answering. Is it running on this computer?' : e.message, 'err'); }
 }
+/* ---------- supplier invoice check ---------- */
+const fileToBase64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
+async function readInvoiceFile(file){
+  const {data, error} = await S.sb.functions.invoke('read-invoice', {body:{file_base64:await fileToBase64(file), media_type:file.type}});
+  if (error){
+    let msg = error.message;
+    try{ const j = await error.context.json(); msg = j.error || msg; }catch(e){}
+    throw new Error(msg);
+  }
+  if (!data || !data.ok) throw new Error((data && data.error) || 'The invoice could not be read.');
+  return data.invoice;
+}
+async function uploadInvoiceFile(file, docId){
+  const path = `${S.tenant}/${docId}/${Date.now()}-${String(file.name || 'invoice').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-60)}`;
+  const {error} = await S.sb.storage.from('invoices').upload(path, file, {contentType:file.type, upsert:false});
+  return error ? null : path;
+}
+async function openInvoiceFile(path, sourceDocId){
+  if (!path && sourceDocId){ const {data} = await S.sb.from('documents').select('invoice_file').eq('id', sourceDocId).maybeSingle(); path = data && data.invoice_file; }
+  if (!path) return toast('No supplier invoice has been uploaded for this entry. Use Check supplier invoice on the GRN.', 'err');
+  const {data, error} = await S.sb.storage.from('invoices').createSignedUrl(path, 600);
+  if (error) return toast(error.message, 'err');
+  window.open(data.signedUrl, '_blank', 'noopener');
+}
+// what was received, one row per item, in base units and rate per base unit
+async function receivedFor(docId){
+  const {data:ls, error} = await S.sb.from('document_lines').select('item_id,qty,unit_factor,rate,discount_pct,taxable_value,gst_rate').eq('document_id', docId);
+  if (error) throw error;
+  const ids = [...new Set((ls || []).map(l => l.item_id))];
+  const {data:its} = ids.length ? await S.sb.from('items').select('id,sku,name,uom,hsn_code').in('id', ids) : {data:[]};
+  const byItem = {};
+  (ls || []).forEach(l => {
+    const it = (its || []).find(x => x.id === l.item_id) || {};
+    const b = byItem[l.item_id] = byItem[l.item_id] || {key:l.item_id, item_id:l.item_id, name:it.name, sku:it.sku, hsn:it.hsn_code, uom:it.uom,
+      barcodes:S.lk.bc[l.item_id] ? [S.lk.bc[l.item_id]] : [], units:S.lk.units.filter(u => u.item_id === l.item_id), qty:0, taxable_value:0,
+      rate:num(l.rate) / num(l.unit_factor || 1), discount_pct:num(l.discount_pct), gst_rate:l.gst_rate};
+    b.qty = +(b.qty + num(l.qty)).toFixed(3); b.taxable_value = +(b.taxable_value + num(l.taxable_value)).toFixed(2);
+  });
+  return Object.values(byItem);
+}
+function checkHtml(res, received, editable, doc){
+  const st = res.status === 'matched';
+  const chip = x => ({ok:'<span class="tag ok">Matches</span>', amount:'<span class="tag warn">Amount differs</span>', qty:'<span class="tag bad">Quantity differs</span>',
+                      missing:'<span class="tag bad">Not received</span>', extra:'<span class="tag bad">Not on invoice</span>'}[x.status]);
+  const opts = (r) => `<select data-force="${r.i}" aria-label="Received item for this invoice line"><option value="">Not received</option>${received.map(x =>
+      `<option value="${x.key}" ${x.key === r.key ? 'selected' : ''}>${esc(x.name)} (${fmtQty(x.qty)} ${esc(x.uom || '')})</option>`).join('')}</select>`;
+  return `<div class="ckhead ${st ? 'ok' : 'bad'}">${st ? '✓ The supplier invoice matches what was received.' : res.quantities_match ? 'Quantities match, but amounts or details differ.' : '✗ Quantities do not match the supplier invoice.'}</div>
+    <ul class="cklist">${res.head.map(h => `<li class="${h.ok ? 'ok' : 'bad'}">${h.ok ? '✓' : '✗'} ${esc(h.text)}</li>`).join('')}</ul>
+    <div class="tablewrap ck"><table><thead><tr><th>Invoice line</th><th>Received item</th><th class="n">Invoice qty</th><th class="n">Received</th><th class="n">Rate (inv / ours)</th><th>Result</th></tr></thead><tbody>
+    ${res.rows.map(r => `<tr><td>${esc(r.description)}<div class="muted">${fmtQty(r.inv_qty)} ${esc(r.unit || '')}${r.free_qty ? ` + ${fmtQty(r.free_qty)} free` : ''}${r.batch ? ', batch ' + esc(r.batch) : ''}</div></td>
+      <td>${editable ? opts(r) : esc(r.item_name || 'Not received')}${r.factor && r.factor !== 1 ? `<div class="muted">${esc(r.factor_how)}</div>` : ''}</td>
+      <td class="n">${r.inv_total_base !== undefined ? fmtQty(r.inv_total_base) : ''}</td><td class="n">${r.rec_qty !== undefined ? fmtQty(r.rec_qty) : ''}</td>
+      <td class="n">${r.inv_rate !== null && r.inv_rate !== undefined ? '₹' + fmtMoney(r.inv_rate) : '-'} / ${r.our_rate !== undefined ? '₹' + fmtMoney(r.our_rate) : '-'}</td>
+      <td>${chip(r)}${r.problems.length ? `<div class="muted">${r.problems.map(esc).join('<br>')}</div>` : ''}</td></tr>`).join('')}
+    ${res.extra.map(r => `<tr><td class="muted">(not on the invoice)</td><td>${esc(r.item_name)}</td><td></td><td class="n">${fmtQty(r.rec_qty)}</td><td></td><td>${chip(r)}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${res.invoice.notes ? `<p class="note">Reading note: ${esc(res.invoice.notes)}</p>` : ''}
+    ${editable && doc.status === 'draft' && !doc.party_doc_no && res.invoice.no ? `<p class="note">The supplier bill no. on this GRN will be set to ${esc(res.invoice.no)}.</p>` : ''}
+    ${editable && doc.status === 'draft' && res.head.some(h => h.fix) ? `<label class="chk"><input type="checkbox" id="fixno" checked> Use invoice no. ${esc(res.invoice.no)} as the supplier bill no.</label>` : ''}`;
+}
+const fmtQty = v => { const n = num(v); return Number.isInteger(n) ? String(n) : n.toFixed(3).replace(/0+$/, ''); };
+const fmtMoney = v => num(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+function invoiceCheck(doc){
+  modal(`Check supplier invoice, ${doc.doc_no}`, `
+    <p class="note">Upload the supplier's invoice (a PDF, or a clear photo). It is read by Claude and compared with what was received on this ${doc.doc_type === 'grn' ? 'GRN' : 'return'}: item, quantity, rate, GST and total. The file is kept with the entry.</p>
+    <label for="invf">Supplier invoice</label><input id="invf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+    <div id="invst" class="note" style="margin-top:10px"></div>`, 'Read invoice', async el => {
+      const f = el.querySelector('#invf').files[0], st = el.querySelector('#invst');
+      if (!f){ toast('Choose the invoice file.', 'err'); return false; }
+      if (f.size > 15 * 1048576){ toast('The file is larger than 15 MB.', 'err'); return false; }
+      st.textContent = 'Reading the invoice… this takes about 15 to 40 seconds.';
+      try{
+        const [invoice, received, learned, path] = await Promise.all([readInvoiceFile(f), receivedFor(doc.id),
+          doc.party_id ? S.sb.from('item_supplier_names').select('supplier_text,item_id,factor').eq('party_id', doc.party_id).then(r => r.data || []) : [],
+          uploadInvoiceFile(f, doc.id)]);
+        const ours = [...new Set([...(S.lk.whs || []).filter(w => w.id === doc.warehouse_id).map(w => w.gstin), S.lk.tenant && S.lk.tenant.gstin].filter(Boolean))];
+        const ctx = {party_doc_no:doc.party_doc_no || '', party_gstin:doc.party_gstin, our_gstins:ours, doc_total:doc.doc_value, learned, force:{}};
+        closeModal(); showCheck(doc, invoice, received, ctx, path);
+      }catch(e){ st.textContent = e.message; return false; }
+      return false;
+    });
+}
+function showCheck(doc, invoice, received, ctx, path){
+  // a draft with no supplier bill number simply takes the one printed on the invoice
+  const fillNo = doc.status === 'draft' && !ctx.party_doc_no && invoice.invoice_no;
+  if (fillNo) ctx.party_doc_no = invoice.invoice_no;
+  let res = WMSInvoice.compare(invoice, received, ctx);
+  const label = () => doc.status === 'draft' && res.status === 'matched' ? 'Save and post' : 'Save result';
+  const el = modal(`Supplier invoice ${invoice.invoice_no || ''} against ${doc.doc_no}`, checkHtml(res, received, true, doc), label(), async m => {
+    const fixNo = m.querySelector('#fixno');
+    if ((fixNo && fixNo.checked && doc.status === 'draft') || fillNo){
+      const {error} = await S.sb.from('documents').update({party_doc_no:invoice.invoice_no}).eq('id', doc.id);
+      if (error){ toast(error.message, 'err'); return false; }
+      res = WMSInvoice.compare(invoice, received, {...ctx, party_doc_no:invoice.invoice_no});
+    }
+    const keep = {status:res.status, quantities_match:res.quantities_match, summary:res.summary, head:res.head, invoice:res.invoice,
+                  rows:res.rows.map(r => ({description:r.description, unit:r.unit, inv_qty:r.inv_qty, free_qty:r.free_qty, inv_total_base:r.inv_total_base, rec_qty:r.rec_qty,
+                                          item_id:r.item_id, item_name:r.item_name, inv_rate:r.inv_rate, our_rate:r.our_rate, status:r.status, problems:r.problems})),
+                  extra:res.extra};
+    const {error} = await S.sb.rpc('set_invoice_check', {p_doc:doc.id, p_result:keep, p_status:res.status, p_file:path});
+    if (error){ toast(error.message, 'err'); return false; }
+    if (doc.party_id){ const rows = WMSInvoice.learnRows(res, doc.party_id, S.tenant); if (rows.length) await S.sb.from('item_supplier_names').upsert(rows, {onConflict:'party_id,supplier_text'}); }
+    if (doc.status === 'draft' && res.status === 'matched'){ closeModal(); await postDoc(doc.id, doc.doc_no); }
+    else { toast(res.status === 'matched' ? 'Saved: the invoice matches.' : 'Saved with differences. Fix the entry and check again, or take it up with the supplier.', res.status === 'matched' ? '' : 'err'); load(); }
+  }, true);
+  el.addEventListener('change', e => {
+    const s2 = e.target.closest('[data-force]'); if (!s2) return;
+    ctx.force[s2.dataset.force] = s2.value;
+    res = WMSInvoice.compare(invoice, received, ctx);
+    el.querySelector('.mb').innerHTML = checkHtml(res, received, true, doc);
+    el.querySelector('[data-mok]').textContent = label();
+  });
+}
+async function showSavedCheck(r){
+  const {data} = await S.sb.from('documents').select('invoice_check,invoice_checked_at,invoice_file').eq('id', r.id).maybeSingle();
+  if (!data || !data.invoice_check) return toast('No saved check.', 'err');
+  const res = {...data.invoice_check, rows:(data.invoice_check.rows || []), extra:(data.invoice_check.extra || []), head:(data.invoice_check.head || []), invoice:data.invoice_check.invoice || {}};
+  modal(`Invoice check of ${r.doc_no}, ${fmtTime(data.invoice_checked_at)}`, checkHtml(res, [], false, r), data.invoice_file ? 'Open the invoice' : 'Close',
+    async () => { if (data.invoice_file) openInvoiceFile(data.invoice_file); }, true);
+}
+// where the stock of a purchase (or one lot) went
+async function lotTrail({source_doc_id, lot_id, title}){
+  let q = S.sb.from('v_lot_movements').select('*').eq('tenant_id', S.tenant);
+  if (lot_id){ const {data:rt} = await S.sb.from('v_lot_roots').select('root_lot_id').eq('lot_id', lot_id).maybeSingle(); q = q.eq('root_lot_id', rt ? rt.root_lot_id : lot_id); }
+  else q = q.eq('source_doc_id', source_doc_id);
+  const {data, error} = await q.order('ledger_id').limit(2000);
+  if (error) return toast(error.message, 'err');
+  const rows = data || [];
+  const sum = f => rows.filter(f).reduce((a, x) => a + num(x.qty), 0);
+  const inn = sum(x => x.doc_type !== 'transfer' && x.qty > 0 && !x.is_reversal), sold = -sum(x => x.doc_type === 'sales_invoice');
+  const ret = -sum(x => x.doc_type === 'purchase_return'), adj = -sum(x => x.doc_type === 'adjustment_out') + sum(x => x.doc_type === 'adjustment_in' && x.lot_id);
+  const left = rows.reduce((a, x) => a + num(x.qty), 0);
+  modal(`Where it went: ${title}`, `
+    <p class="note"><b>${fmtQty(inn)}</b> received · <b>${fmtQty(sold)}</b> sold · <b>${fmtQty(ret)}</b> returned to supplier${adj ? ` · ${fmtQty(-adj)} adjusted` : ''} · <b>${fmtQty(left)}</b> still in stock</p>
+    <div class="tablewrap ck"><table><thead><tr><th>Date</th><th>Entry</th><th>Number</th><th>Party</th><th>Warehouse</th><th class="n">In</th><th class="n">Out</th><th class="n">Cost</th></tr></thead><tbody>
+    ${rows.map(x => `<tr><td>${fmtDate(x.movement_date)}</td><td>${esc(DOC_LABEL[x.doc_type] || x.doc_type)}${x.is_reversal ? ' (cancelled)' : ''}</td><td>${esc(x.doc_no)}</td><td>${esc(x.party || '')}</td>
+      <td>${esc(x.warehouse)}</td><td class="n">${x.qty > 0 ? fmtQty(x.qty) : ''}</td><td class="n">${x.qty < 0 ? fmtQty(-x.qty) : ''}</td><td class="n">₹${fmtMoney(x.unit_cost)}</td></tr>`).join('') || '<tr><td colspan="8">No movements.</td></tr>'}
+    </tbody></table></div>`, 'Close', async () => {}, true);
+}
+
 /* ---------- Tally -> WMS: items and parties ---------- */
 async function pullPlan(){
   if (!window.WMSTally || !WMSTally.planPull) throw new Error('Tally module did not load. Keep wms-tally.js next to this page.');
