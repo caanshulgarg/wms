@@ -49,6 +49,10 @@ nav .ng.has-on{color:#fff}
 nav .grp{padding-bottom:4px}
 nav .grp[hidden]{display:none}
 nav .nonav{padding:10px 18px;color:#8E9BBB;font-size:13px}
+.autostat{margin:8px 0 0;padding:8px 12px;border-radius:6px;font-size:14px;flex-basis:100%;border-left:4px solid #8E9BBB;background:#F2F4F8}
+.autostat.on{border-left-color:#1D6B3A;background:#EEF7F1}.autostat.warn{border-left-color:#B25E00;background:#FFF6EA}
+label.chk{display:flex;gap:8px;align-items:center;margin:10px 0;font-weight:500}
+ul.plist{margin:4px 0 10px 18px;padding:0}ul.plist li{margin:2px 0}.muted{color:var(--muted)}
 nav a .sub{color:#8E9BBB;font-weight:400}
 .tabs{flex-basis:100%;order:2;display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line,#D9DEE8);margin-top:4px;scrollbar-width:thin}
 .tabs a{padding:9px 14px 8px;white-space:nowrap;color:#4A5570;text-decoration:none;border-bottom:3px solid transparent;font-weight:500;font-size:14px}
@@ -539,7 +543,9 @@ const REPORTS = [
          T('phone','Phone'), T('email','Email'), T('bank_account','Bank account'), Y('einvoice_applicable','E-invoice applies')]},
   {group:'Tally', id:'tallysync', title:'Tally sync', src:'v_tally_queue', sort:['doc_date','asc'],
    note:'Entries not yet in Tally. Send them through the Tally Bridge on the Tally computer, or download an XML file to import in Tally.',
-   tools:[{label:'Connect Tally Bridge', fn:() => bridgeConnect()}, {label:'Send shown rows to Tally', fn:() => tallySend()}, {label:'Download XML for shown rows', fn:() => tallyExport()}],
+   tools:[{label:'Automatic sync…', fn:() => autoSettings()}, {label:'Bring items and parties from Tally', fn:() => pullPreview()},
+          {label:'Connect Tally Bridge', fn:() => bridgeConnect()}, {label:'Send shown rows to Tally', fn:() => tallySend()}, {label:'Download XML for shown rows', fn:() => tallyExport()}],
+   extra:() => autoStatusHtml(),
    prep:r => ({...r, type_label:DOC_LABEL[r.doc_type] || {receipt:'Customer receipt', payment:'Supplier payment'}[r.doc_type] || r.doc_type,
                company:tallyCompanyFor(r.gstin), side_label:r.side === 'receiver' ? 'Receiving branch' : '', act_label:r.action === 'cancel' ? 'Cancel in Tally' : 'Create'}),
    actions:r => [{label:'Mark as done', fn:() => tallyMarkDone(r)}],
@@ -679,8 +685,10 @@ async function useTenant(t){
   S.tenant = t.id; S.role = t.role;
   LS.set('wms.ctx', {...LS.get('wms.ctx', {}), tenant:t.id});
   await loadLookups();
-  const hash = location.hash.slice(1);
+  let hash = location.hash.slice(1);
+  if (hash === 'tallyauto'){ LS.set('wms.auto.here.' + S.tenant, true); hash = 'tallysync'; }   // opened by the Tally Bridge at sign-in
   openReport(REPORTS.find(r => r.id === hash) || REPORTS[0]);
+  autoStart();
 }
 async function loadLookups(){
   const t = {id:S.tenant};
@@ -1096,7 +1104,7 @@ function render(){
           ${(rep.tools || []).map((x, j) => `<button class="btn" data-tool="${j}">${esc(x.label)}</button>`).join('')}
           <button class="btn" id="reload">Refresh</button>
           <button class="btn primary" id="xls" ${rows.length ? '' : 'disabled'}>Export to Excel</button></div>
-        ${rep.note ? `<p>${esc(rep.note)}</p>` : ''}</div>
+        ${rep.note ? `<p>${esc(rep.note)}</p>` : ''}${rep.extra ? rep.extra() : ''}</div>
       ${rep.custom ? (S.loading ? '<div class="empty">Loading…</div>' : dashHtml()) : ''}
       ${S.loading || rep.custom ? '' : chipBar(rows.length)}
       <div class="tablewrap${rep.custom ? ' hidden' : ''}">
@@ -2006,9 +2014,9 @@ function bridgeConnect(){
       }
     });
 }
-async function tallyBuild(){
-  const rows = sorted(filtered());
-  if (!rows.length){ toast('Nothing to send.', 'err'); return null; }
+async function tallyBuild(rowsIn){
+  const rows = rowsIn || sorted(filtered());
+  if (!rows.length){ if (!rowsIn) toast('Nothing to send.', 'err'); return null; }
   if (rows.length > 300){ toast('Filter to 300 entries or fewer at a time.', 'err'); return null; }
   if (!window.WMSTally){ toast('Tally module did not load. Keep wms-tally.js next to this page.', 'err'); return null; }
   const D = await WMSTally.load(S.sb, S.tenant, rows);
@@ -2016,13 +2024,12 @@ async function tallyBuild(){
   for (const p of R.problems) await S.sb.from('tally_sync_log').insert({tenant_id:S.tenant, entity:p.row.entity, entity_id:p.row.entity_id, action:p.row.action, side:p.row.side, status:'failed', message:p.message});
   return R;
 }
-async function tallySend(){
-  const c = bridgeCfg(); if (!c.key) return bridgeConnect();
-  try{
-    const R = await tallyBuild(); if (!R) return;
+// Sends queue rows through the bridge and logs each result. Used by the button and by automatic sync.
+async function pushRows(rows, quiet){
+    const R = await tallyBuild(rows); if (!R) return null;
     let ok = 0, bad = R.problems.length, masterErr = [];
     for (const [company, part] of Object.entries(R.byCompany)){
-      toast(`Sending ${part.vouchers.length} entries to ${company}…`);
+      if (!quiet) toast(`Sending ${part.vouchers.length} entries to ${company}…`);
       const res = await bridgeCall('/import', {company, masters:part.masters, vouchers:part.vouchers.map((v, i) => ({id:'v' + i, xml:v.xml}))});
       (res.results || []).filter(x => x.kind === 'master' && !x.ok && !/exist/i.test(x.message || '')).forEach(x => masterErr.push(`${x.id.slice(2)}: ${x.message}`));
       const logs = part.vouchers.map((v, i) => {
@@ -2034,10 +2041,200 @@ async function tallySend(){
       });
       if (logs.length){ const {error} = await S.sb.from('tally_sync_log').insert(logs); if (error) toast(error.message, 'err'); }
     }
+    return {ok, bad, masterErr};
+}
+async function tallySend(){
+  const c = bridgeCfg(); if (!c.key) return bridgeConnect();
+  try{
+    const res = await pushRows(null, false); if (!res) return;
+    const {ok, bad, masterErr} = res;
     toast(`${ok} entr${ok === 1 ? 'y' : 'ies'} in Tally.${bad ? ` ${bad} failed; see Last error.` : ''}${masterErr.length ? ' Masters not created: ' + masterErr.slice(0, 3).join('; ') : ''}`, bad || masterErr.length ? 'err' : '');
     load();
   }catch(e){ toast(/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'The Tally Bridge is not answering. Is it running on this computer?' : e.message, 'err'); }
 }
+/* ---------- Tally -> WMS: items and parties ---------- */
+async function pullPlan(){
+  if (!window.WMSTally || !WMSTally.planPull) throw new Error('Tally module did not load. Keep wms-tally.js next to this page.');
+  const co = await bridgeCall('/companies');
+  const open = (co.companies || []).map(x => x.name);
+  const mapped = S.lk.tallyCos.map(t => t.company_name).filter(n => open.includes(n));
+  const companies = mapped.length ? mapped : open;
+  if (!companies.length) throw new Error('No company is open in TallyPrime.');
+  const items = [], parties = [];
+  for (const company of companies){
+    const ask = async key => (await bridgeCall('/export', {company, xml:WMSTally.PULL_REQUESTS[key](company)})).xml;
+    items.push(...WMSTally.parseItems(await ask('items')));
+    const [lx, gx] = [await ask('ledgers'), await ask('groups')];
+    parties.push(...WMSTally.parseParties(lx, gx));
+  }
+  const one = async q => { const {data, error} = await q; if (error) throw error; return data || []; };
+  const [wi, wp] = await Promise.all([
+    one(S.sb.from('v_items_master').select('id,sku,name,hsn_code,mrp,std_purchase_price,track_batch,track_expiry,tally_stock_item,current_gst_rate,current_cess_rate,gst_from').eq('tenant_id', S.tenant).limit(50000)),
+    one(S.sb.from('parties').select('id,name,party_type,gstin,state_code,address1,address2,pincode,phone,email,tally_ledger').eq('tenant_id', S.tenant).limit(50000))]);
+  return {companies, plan:WMSTally.planPull({items, parties}, {items:wi, parties:wp, today:isoToday()}), read:{items:items.length, parties:parties.length}};
+}
+async function pullApply(plan){
+  const out = {items_new:0, items_updated:0, rates:0, parties_new:0, parties_updated:0, skipped:plan.items.skipped.length + plan.parties.skipped.length, errors:[]};
+  const chunk = (a, n) => Array.from({length:Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
+  for (const part of chunk(plan.items.create, 200)){
+    const {data, error} = await S.sb.from('items').insert(part.map(c => ({...c.row, tenant_id:S.tenant}))).select('id,sku');
+    if (error){ out.errors.push('Items: ' + error.message); continue; }
+    out.items_new += data.length;
+    const bySku = Object.fromEntries(data.map(x => [x.sku, x.id]));
+    const rates = part.filter(c => bySku[c.row.sku]).map(c => ({tenant_id:S.tenant, item_id:bySku[c.row.sku], ...c.rate}));
+    const {error:re} = await S.sb.from('item_gst_rates').insert(rates);
+    if (re) out.errors.push('GST rates: ' + re.message); else out.rates += rates.length;
+  }
+  for (const u of plan.items.update){
+    const {error} = await S.sb.from('items').update(u.changes).eq('id', u.id);
+    if (error) out.errors.push(`${u.name}: ${error.message}`); else out.items_updated++;
+  }
+  if (plan.items.rates.length){
+    const {error} = await S.sb.from('item_gst_rates').insert(plan.items.rates.map(r => ({tenant_id:S.tenant, item_id:r.item_id, effective_from:r.effective_from, gst_rate:r.gst_rate, cess_rate:r.cess_rate})));
+    if (error) out.errors.push('GST rates: ' + error.message); else out.rates += plan.items.rates.length;
+  }
+  for (const part of chunk(plan.parties.create, 200)){
+    const {data, error} = await S.sb.from('parties').insert(part.map(p => ({...p, tenant_id:S.tenant}))).select('id');
+    if (error) out.errors.push('Parties: ' + error.message); else out.parties_new += data.length;
+  }
+  for (const u of plan.parties.update){
+    const {error} = await S.sb.from('parties').update(u.changes).eq('id', u.id);
+    if (error) out.errors.push(`${u.name}: ${error.message}`); else out.parties_updated++;
+  }
+  if (out.items_new || out.parties_new || out.items_updated || out.parties_updated) await loadLookups();
+  return out;
+}
+const pullSummary = r => [r.items_new && `${r.items_new} new item${r.items_new > 1 ? 's' : ''}`, r.items_updated && `${r.items_updated} item${r.items_updated > 1 ? 's' : ''} updated`,
+  r.rates && `${r.rates} GST rate${r.rates > 1 ? 's' : ''}`, r.parties_new && `${r.parties_new} new part${r.parties_new > 1 ? 'ies' : 'y'}`,
+  r.parties_updated && `${r.parties_updated} part${r.parties_updated > 1 ? 'ies' : 'y'} updated`].filter(Boolean).join(', ') || 'nothing new';
+async function pullPreview(){
+  if (!bridgeCfg().key) return bridgeConnect();
+  toast('Reading items and parties from Tally…');
+  let P;
+  try{ P = await pullPlan(); }
+  catch(e){ return toast(/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'The Tally Bridge is not answering. Is it running on this computer?' : e.message, 'err'); }
+  const p = P.plan, list = (a, f) => a.length ? `<ul class="plist">${a.slice(0, 8).map(x => `<li>${f(x)}</li>`).join('')}${a.length > 8 ? `<li>and ${a.length - 8} more</li>` : ''}</ul>` : '';
+  const n = p.items.create.length + p.items.update.length + p.items.rates.length + p.parties.create.length + p.parties.update.length;
+  modal('Bring items and parties from Tally', `
+    <p class="note">Read ${P.read.items} stock items and ${P.read.parties} parties from ${esc(P.companies.join(', '))}. Nothing in WMS is renamed or removed; only blanks are filled.</p>
+    <h3>New items: ${p.items.create.length}</h3>${list(p.items.create, c => `${esc(c.row.name)} <span class="muted">HSN ${esc(c.row.hsn_code)}, GST ${c.rate.gst_rate}%</span>`)}
+    <h3>Items to update: ${p.items.update.length}</h3>${list(p.items.update, u => `${esc(u.name)} <span class="muted">${esc(Object.keys(u.changes).map(k => ({tally_stock_item:'Tally name', hsn_code:'HSN', mrp:'MRP', std_purchase_price:'cost', track_batch:'batch tracking', track_expiry:'expiry tracking'}[k] || k)).join(', '))}</span>`)}
+    <h3>New GST rates: ${p.items.rates.length}</h3>${list(p.items.rates, r => `${esc(r.name)} <span class="muted">${r.was ?? '-'}% → ${r.gst_rate}% from ${fmtDate(r.effective_from)}</span>`)}
+    <h3>New parties: ${p.parties.create.length}</h3>${list(p.parties.create, c => `${esc(c.name)} <span class="muted">${c.party_type}${c.gstin ? ', ' + esc(c.gstin) : ''}</span>`)}
+    <h3>Parties to update: ${p.parties.update.length}</h3>${list(p.parties.update, u => `${esc(u.name)} <span class="muted">${esc(Object.keys(u.changes).join(', '))}</span>`)}
+    ${p.items.skipped.length ? `<h3>Not brought in: ${p.items.skipped.length}</h3>${list(p.items.skipped, x => `${esc(x.name)} <span class="muted">${esc(x.why)}</span>`)}` : ''}`,
+    n ? `Apply ${n} change${n > 1 ? 's' : ''}` : 'Close', async () => {
+      if (!n) return;
+      const r = await pullApply(p);
+      toast(`From Tally: ${pullSummary(r)}.${r.errors.length ? ' Problems: ' + r.errors.slice(0, 2).join('; ') : ''}`, r.errors.length ? 'err' : '');
+    }, true);
+}
+
+/* ---------- automatic two-way sync ----------
+   Runs in this page on the Tally computer (the bridge opens it at sign-in).
+   A lease in the database lets only one computer sync at a time. */
+const AUTO = {holder:(crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)), timer:null, busy:false, state:null};
+const autoHere = () => !!LS.get('wms.auto.here.' + S.tenant, false);
+async function autoLoadState(){
+  const {data} = await S.sb.from('tally_auto_state').select('*').eq('tenant_id', S.tenant).maybeSingle();
+  AUTO.state = data || null;
+  return AUTO.state;
+}
+function autoStart(){
+  clearInterval(AUTO.timer);
+  AUTO.timer = setInterval(() => autoTick(), 60000);
+  setTimeout(() => autoTick(), 4000);
+}
+async function autoTick(force){
+  if (AUTO.busy || !S.tenant || !S.sb) return;
+  const st = await autoLoadState().catch(() => null);
+  autoRefreshStatus();
+  if (!st || !(st.push_on || st.pull_on) || !autoHere() || !bridgeCfg().key) return;
+  const mine = st.holder === AUTO.holder && st.lease_until && new Date(st.lease_until) > new Date();
+  const due = force || !st.last_run_at || !mine || Date.now() - new Date(st.last_run_at) >= st.every_min * 60000 - 5000;
+  if (!due) return;
+  const {data:granted} = await S.sb.rpc('tally_auto_claim', {p_tenant:S.tenant, p_holder:AUTO.holder,
+    p_label:(S.user?.email || 'someone') + ' on ' + (AUTO.computer || 'the Tally computer'), p_seconds:st.every_min * 60 + 180});
+  if (!granted) return autoRefreshStatus();
+  AUTO.busy = true;
+  let push = null, pull = null;
+  try{
+    const co = await bridgeCall('/companies');
+    const open = (co.companies || []).map(x => x.name);
+    if (!AUTO.computer){ try{ const s2 = await bridgeCall('/status'); AUTO.computer = s2.computer; }catch(e){} }
+    if (st.push_on){
+      const since = new Date(Date.now() - 30 * 60000).toISOString();
+      const [{data:q, error:qe}, {data:fails}] = await Promise.all([
+        S.sb.from('v_tally_queue').select('*').eq('tenant_id', S.tenant).order('doc_date').limit(2000),
+        S.sb.from('tally_sync_log').select('entity_id').eq('tenant_id', S.tenant).eq('status', 'failed').gte('created_at', since).limit(5000)]);
+      if (qe) throw qe;
+      const recent = new Set((fails || []).map(f => f.entity_id));      // failed in the last 30 minutes: try again later, not every minute
+      const all = q || [];
+      const notOpen = [...new Set(all.map(r => tallyCompanyFor(r.gstin)).filter(c => c && !open.includes(c)))];
+      const ready = all.filter(r => !recent.has(r.entity_id) && open.includes(tallyCompanyFor(r.gstin)));
+      const batch = ready.slice(0, 300);
+      const res = batch.length ? await pushRows(batch, true) : {ok:0, bad:0, masterErr:[]};
+      push = {at:new Date().toISOString(), sent:res ? res.ok : 0, failed:res ? res.bad : 0, waiting:all.length - (res ? res.ok : 0),
+              held_back:recent.size ? all.filter(r => recent.has(r.entity_id)).length : 0, not_open:notOpen,
+              no_company:all.filter(r => !tallyCompanyFor(r.gstin)).length};
+    }
+    const lastPull = st.last_pull && st.last_pull.at ? new Date(st.last_pull.at) : null;
+    if (st.pull_on && (force || !lastPull || Date.now() - lastPull >= 30 * 60000)){
+      const P = await pullPlan();
+      const r = await pullApply(P.plan);
+      pull = {at:new Date().toISOString(), ...r, errors:r.errors.slice(0, 5)};
+    }
+  }catch(e){
+    const msg = /Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'The Tally Bridge is not answering on this computer.' : e.message;
+    if (st.push_on && !push) push = {at:new Date().toISOString(), error:msg};
+    else if (st.pull_on) pull = {at:new Date().toISOString(), error:msg, ...(pull || {})};
+  }finally{
+    await S.sb.rpc('tally_auto_report', {p_tenant:S.tenant, p_holder:AUTO.holder, p_push:push, p_pull:pull});
+    AUTO.busy = false;
+    await autoLoadState().catch(() => null);
+    autoRefreshStatus();
+    if (push && push.sent && S.rep && ['tallysync','tallylog'].includes(S.rep.id) && !S.pop && !document.querySelector('.modal-bg')) load();
+  }
+}
+const hhmm = t => t ? new Date(t).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
+function autoStatusHtml(){
+  const st = AUTO.state;
+  if (!st || !(st.push_on || st.pull_on)) return `<p class="autostat off" id="autostat">Automatic sync is off. Use <b>Automatic sync…</b> to switch it on.</p>`;
+  const live = st.lease_until && new Date(st.lease_until) > new Date();
+  const p = st.last_push || {}, q = st.last_pull || {};
+  const what = [st.push_on && `sends new entries every ${st.every_min} min`, st.pull_on && 'brings new items and parties every 30 min'].filter(Boolean).join(' and ');
+  const parts = [];
+  if (st.push_on && p.at) parts.push(p.error ? `sending stopped at ${hhmm(p.at)}: ${esc(p.error)}` :
+    `${hhmm(p.at)}: ${p.sent} sent${p.failed ? `, <b>${p.failed} failed</b>` : ''}${p.waiting ? `, ${p.waiting} waiting` : ''}${p.not_open && p.not_open.length ? `; not open in Tally: ${esc(p.not_open.join(', '))}` : ''}${p.no_company ? `; ${p.no_company} with no Tally company set` : ''}`);
+  if (st.pull_on && q.at) parts.push(q.error ? `bringing from Tally stopped at ${hhmm(q.at)}: ${esc(q.error)}` : `from Tally at ${hhmm(q.at)}: ${pullSummary(q)}${q.skipped ? `, ${q.skipped} not brought in` : ''}`);
+  const who = live ? `Running on ${esc(st.holder_label || 'the Tally computer')}${st.holder === AUTO.holder ? ' (this window)' : ''}.`
+                   : `<b>No computer is syncing now.</b> Keep Warehouse Office open on the Tally computer${autoHere() ? '' : ' and tick “Run on this computer” there'}.`;
+  const bad = !live || p.error || q.error || p.failed;
+  return `<p class="autostat ${bad ? 'warn' : 'on'}" id="autostat">Automatic sync ${what}. ${who}${parts.length ? ' Last: ' + parts.join('. ') + '.' : ''}</p>`;
+}
+function autoRefreshStatus(){ const el = document.getElementById('autostat'); if (el) el.outerHTML = autoStatusHtml(); }
+function autoSettings(){
+  const st = AUTO.state || {push_on:false, pull_on:false, every_min:5};
+  modal('Automatic Tally sync', `
+    <p class="note">Automatic sync runs in Warehouse Office on the computer where TallyPrime and the Tally Bridge run. The bridge opens it by itself when that computer starts; keep TallyPrime open with your company.</p>
+    <label class="chk"><input type="checkbox" id="ap" ${st.push_on ? 'checked' : ''}> Send new WMS entries to Tally by themselves</label>
+    <label class="chk"><input type="checkbox" id="aq" ${st.pull_on ? 'checked' : ''}> Bring new items and parties from Tally by themselves</label>
+    <label for="am">Check every</label>
+    <select id="am">${[2, 5, 10, 15, 30, 60].map(m => `<option value="${m}" ${m === st.every_min ? 'selected' : ''}>${m} minutes</option>`).join('')}</select>
+    <label class="chk" style="margin-top:14px"><input type="checkbox" id="ah" ${autoHere() ? 'checked' : ''}> Run on this computer (tick only on the Tally computer)</label>
+    <p class="note">Only one computer syncs at a time, so no entry is sent twice. Entries that fail are tried again after 30 minutes and shown under Last error.
+      From Tally, WMS only adds what is missing and fills blanks; it never renames or removes anything. Stock quantities are not brought back from Tally,
+      because WMS sends its own stock movements there.</p>`, 'Save', async el => {
+      const v = id => el.querySelector(id);
+      const {error} = await S.sb.rpc('set_tally_auto', {p_tenant:S.tenant, p_push:v('#ap').checked, p_pull:v('#aq').checked, p_every:+v('#am').value});
+      if (error){ toast(error.message, 'err'); return false; }
+      LS.set('wms.auto.here.' + S.tenant, v('#ah').checked);
+      if (v('#ah').checked && !bridgeCfg().key) toast('Now connect the Tally Bridge on this computer (Connect Tally Bridge).');
+      else toast('Saved.');
+      await autoLoadState(); autoRefreshStatus(); autoTick(true);
+    });
+}
+
 async function tallyExport(){
   try{
     const R = await tallyBuild(); if (!R) return;
