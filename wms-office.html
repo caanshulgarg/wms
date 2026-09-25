@@ -54,6 +54,7 @@ nav .nonav{padding:10px 18px;color:#8E9BBB;font-size:13px}
 .autostat.on{border-left-color:#1D6B3A;background:#EEF7F1}.autostat.warn{border-left-color:#B25E00;background:#FFF6EA}
 label.chk{display:flex;gap:8px;align-items:center;margin:10px 0;font-weight:500}
 ul.plist{margin:4px 0 10px 18px;padding:0}ul.plist li{margin:2px 0}.muted{color:var(--muted)}
+.note.warnnote{color:#8A4B00;background:#FFF6EA;padding:6px 10px;border-radius:6px}
 .ckhead{padding:10px 12px;border-radius:6px;font-weight:600;margin-bottom:8px}.ckhead.ok{background:#EEF7F1;color:#1D6B3A}.ckhead.bad{background:#FFF1EE;color:#A1331C}
 ul.cklist{list-style:none;margin:0 0 10px;padding:0}ul.cklist li{padding:2px 0}ul.cklist li.bad{color:#A1331C}ul.cklist li.ok{color:#1D6B3A}
 .tablewrap.ck{margin:0 0 8px;max-height:52vh;overflow:auto}.tablewrap.ck td,.tablewrap.ck th{padding:6px 8px;vertical-align:top}.tablewrap.ck td.n,.tablewrap.ck th.n{text-align:right}
@@ -608,9 +609,10 @@ const REPORTS = [
          M('adjustment_above_value','Adjustment above Rs'), M('purchase_order_above_value','Purchase order above Rs'), Y('cancel_needs_approval','Cancelling'), C('roles','Approvers')]},
   {group:'Settings', id:'settings', title:'Company settings', src:'company_settings', sort:['tenant_id','asc'],
    actions:r => [{label:'Edit', fn:() => editForm('company_settings', r)}],
-   prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO'}),
+   prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO',
+               reader_label:{free_first:'Free first', free_only:'Free only', claude_first:'Claude first'}[r.invoice_reader] || 'Free first'}),
    cols:[D('books_lock_date','Books locked up to'), C('cost_label','Stock valuation'), C('neg','Negative stock'), N('near_expiry_days','Near-expiry days'), N('po_excess_pct','Allowed excess over PO %'),
-         Y('warn_below_cost','Warn below cost'), Y('invoice_check_on','Invoice check'), Y('blind_receiving','Blind receiving'), Y('po_three_way','Three-way match'), Y('einvoice_qr_on','E-invoice QR'),
+         Y('warn_below_cost','Warn below cost'), Y('invoice_check_on','Invoice check'), Y('blind_receiving','Blind receiving'), Y('po_three_way','Three-way match'), Y('einvoice_qr_on','E-invoice QR'), C('reader_label','Invoice reader'),
          Y('grn_needs_invoice_match','GRN needs matching invoice'), C('timezone','Time zone')]},
   {group:'Settings', id:'backdate', title:'Back-date limits', src:'role_backdate_limits', sort:['role','asc'],
    note:'How many days back each role can post entries. A role not listed has no limit (the lock date still applies).',
@@ -1496,6 +1498,9 @@ const CRUD = {
     {k:'blind_receiving', label:'Blind receiving: the scanner does not show the invoice or order quantities to the receiver', type:'check'},
     {k:'po_three_way', label:'Three-way match: compare the invoice rate with the purchase order rate', type:'check'},
     {k:'einvoice_qr_on', label:'Read the e-invoice QR code on supplier bills', type:'check'},
+    {k:'invoice_reader', label:'How supplier invoices are read', type:'select',
+     options:() => [['free_first','Free first; Claude only if the free reading does not tie up'], ['free_only','Free only (never Claude)'], ['claude_first','Claude first (needs the Anthropic key)']],
+     help:'Free reading uses the text inside computer-made PDFs, and free OCR for photos and scans.'},
     {k:'grn_needs_invoice_match', label:'Post goods received only after the supplier invoice matches', type:'check',
      help:'Switch this on only after invoice reading is set up (ANTHROPIC_API_KEY in Supabase); otherwise no GRN can be posted.'},
     {k:'timezone', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
@@ -2145,6 +2150,7 @@ function checkHtml(res, received, editable, doc){
       <td>${chip(r)}${r.problems.length ? `<div class="muted">${r.problems.map(esc).join('<br>')}</div>` : ''}</td></tr>`).join('')}
     ${res.extra.map(r => `<tr><td class="muted">(not on the invoice)</td><td>${esc(r.item_name)}</td><td></td><td class="n">${fmtQty(r.rec_qty)}</td><td></td><td>${chip(r)}</td></tr>`).join('')}
     </tbody></table></div>
+    ${res.invoice.read_label ? `<p class="note ${res.invoice.read_confident === false ? 'warnnote' : ''}">${esc(res.invoice.read_label)}.${res.invoice.read_confident === false ? ' Compare the lines above with the bill before saving.' : ''}</p>` : ''}
     ${res.invoice.notes ? `<p class="note">Reading note: ${esc(res.invoice.notes)}</p>` : ''}
     ${editable && doc.status === 'draft' && !doc.party_doc_no && res.invoice.no ? `<p class="note">The supplier bill no. on this GRN will be set to ${esc(res.invoice.no)}.</p>` : ''}
     ${editable && doc.status === 'draft' && res.head.some(h => h.fix) ? `<label class="chk"><input type="checkbox" id="fixno" checked> Use invoice no. ${esc(res.invoice.no)} as the supplier bill no.</label>` : ''}`;
@@ -2153,7 +2159,7 @@ const fmtQty = v => { const n = num(v); return Number.isInteger(n) ? String(n) :
 const fmtMoney = v => num(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
 function invoiceCheck(doc){
   modal(`Check supplier invoice, ${doc.doc_no}`, `
-    <p class="note">Upload the supplier's invoice (a PDF, or a clear photo). It is read by Claude and compared with what was received on this ${doc.doc_type === 'grn' ? 'GRN' : 'return'}: item, quantity, rate, GST and total. The file is kept with the entry.</p>
+    <p class="note">Upload the supplier's invoice (a PDF, or a clear photo). It is read, for free where possible, and compared with what was received on this ${doc.doc_type === 'grn' ? 'GRN' : 'return'}: item, quantity, rate, GST and total. The file is kept with the entry.</p>
     <label for="invf">Supplier invoice</label><input id="invf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
     ${S.lk.settings.einvoice_qr_on !== false ? `<label for="invqr">E-invoice QR (optional)</label>
       <input id="invqr" placeholder="Click here, then scan the QR code on the bill with a 2D scanner" autocomplete="off">
@@ -2165,12 +2171,15 @@ function invoiceCheck(doc){
       if (qrText.trim() && !qr){ st.textContent = 'That is not an e-invoice QR code. Scan the QR (not the barcode), or leave the box empty.'; return false; }
       if (!f){ toast('Choose the invoice file.', 'err'); return false; }
       if (f.size > 15 * 1048576){ toast('The file is larger than 15 MB.', 'err'); return false; }
-      st.textContent = 'Reading the invoice… this takes about 15 to 40 seconds.';
+      st.textContent = 'Reading the invoice…';
       try{
-        const [invoice, received, learned, path] = await Promise.all([readInvoiceFile(f), receivedFor(doc.id),
+        const ours = [...new Set([...(S.lk.whs || []).filter(w => w.id === doc.warehouse_id).map(w => w.gstin), S.lk.tenant && S.lk.tenant.gstin].filter(Boolean))];
+        const read = WMSInvoice.readSmart(f, {sb:S.sb, mode:S.lk.settings.invoice_reader || 'free_first', hints:{our_gstins:ours, party_gstin:doc.party_gstin},
+                                             onStep:t => { st.textContent = t; }});
+        const [readRes, received, learned, path] = await Promise.all([read, receivedFor(doc.id),
           doc.party_id ? S.sb.from('item_supplier_names').select('supplier_text,item_id,factor').eq('party_id', doc.party_id).then(r => r.data || []) : [],
           uploadInvoiceFile(f, doc.id)]);
-        const ours = [...new Set([...(S.lk.whs || []).filter(w => w.id === doc.warehouse_id).map(w => w.gstin), S.lk.tenant && S.lk.tenant.gstin].filter(Boolean))];
+        const invoice = readRes.invoice; invoice.read_label = readRes.label; invoice.read_confident = readRes.confident;
         const irn = (qr && qr.Irn) || (/^[0-9a-f]{64}$/i.test(invoice.irn || '') ? String(invoice.irn).toLowerCase() : null);
         const {data:dups} = await S.sb.rpc('duplicate_bill', {p_tenant:S.tenant, p_doc:doc.id, p_irn:irn, p_party:doc.party_id || null, p_bill_no:(qr && qr.DocNo) || invoice.invoice_no || doc.party_doc_no || null});
         const ctx = {party_doc_no:doc.party_doc_no || '', party_gstin:doc.party_gstin, our_gstins:ours, doc_total:doc.doc_value, learned, force:{},
