@@ -305,14 +305,14 @@ const REPORTS = [
 
   {group:'Documents', id:'docs', title:'All documents', src:'v_documents', range:'doc_date', sort:['doc_date','desc'],
    prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type, created_by_name:userOf(r.created_by), status_label:cap(r.status),
-               check_label:{matched:'Matches', differences:'Differences'}[r.invoice_check_status] || (r.doc_type === 'grn' ? 'Not checked' : '')}),
+               check_label:{matched:'Matches', differences:'Differences'}[r.invoice_check_status] || (r.doc_type === 'grn' && S.lk.settings.invoice_check_on !== false ? 'Not checked' : '')}),
    tools:[{label:'E-way JSON for shown rows', fn:() => gstBulk('ewaybill')}, {label:'E-invoice JSON for shown rows', fn:() => gstBulk('einvoice')}],
    actions:r => [
      r.status !== 'draft' && {label:'Print', fn:() => printDoc(r.id)},
      r.status === 'posted' && ['sales_invoice','sales_return','transfer'].includes(r.doc_type) && {label:'E-invoice', fn:() => gstOne(r, 'einvoice')},
      r.status === 'posted' && ['sales_invoice','purchase_return','transfer'].includes(r.doc_type) && {label:'E-way', fn:() => gstOne(r, 'ewaybill')},
      r.status === 'posted' && {label:'IRN / e-way no.', fn:() => gstRefsForm(r)},
-     ['grn','purchase_return'].includes(r.doc_type) && r.status !== 'cancelled' && {label:'Check supplier invoice', fn:() => invoiceCheck(r)},
+     S.lk.settings.invoice_check_on !== false && ['grn','purchase_return'].includes(r.doc_type) && r.status !== 'cancelled' && {label:'Check supplier invoice', fn:() => invoiceCheck(r)},
      r.invoice_file && {label:'Open supplier invoice', fn:() => openInvoiceFile(r.invoice_file)},
      r.invoice_check_status && {label:'Invoice check result', fn:() => showSavedCheck(r)},
      r.status === 'posted' && ['grn','opening','adjustment_in'].includes(r.doc_type) && {label:'Where its stock went', fn:() => lotTrail({source_doc_id:r.id, title:r.doc_no + (r.party_doc_no ? ', bill ' + r.party_doc_no : '')})},
@@ -610,7 +610,8 @@ const REPORTS = [
    actions:r => [{label:'Edit', fn:() => editForm('company_settings', r)}],
    prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO'}),
    cols:[D('books_lock_date','Books locked up to'), C('cost_label','Stock valuation'), C('neg','Negative stock'), N('near_expiry_days','Near-expiry days'), N('po_excess_pct','Allowed excess over PO %'),
-         Y('warn_below_cost','Warn below cost'), Y('grn_needs_invoice_match','GRN needs matching invoice'), C('timezone','Time zone')]},
+         Y('warn_below_cost','Warn below cost'), Y('invoice_check_on','Invoice check'), Y('blind_receiving','Blind receiving'), Y('po_three_way','Three-way match'), Y('einvoice_qr_on','E-invoice QR'),
+         Y('grn_needs_invoice_match','GRN needs matching invoice'), C('timezone','Time zone')]},
   {group:'Settings', id:'backdate', title:'Back-date limits', src:'role_backdate_limits', sort:['role','asc'],
    note:'How many days back each role can post entries. A role not listed has no limit (the lock date still applies).',
    tools:[{label:'Add limit', fn:() => editForm('role_backdate_limits')}],
@@ -724,9 +725,10 @@ async function loadLookups(){
   const tn = await S.sb.from('tenants').select('id,name,gstin,state_code').eq('id', t.id);
   const tc = await q('tally_companies', 'gstin,company_name');
   const uw = await q('user_warehouses', 'user_id,warehouse_id');
+  const cs = await q('company_settings', '*');
   S.lk = {wh:{}, loc:{}, party:{}, item:{}, user:{}, bc:{}, parties:(p.data || []).filter(x => x.is_active !== false),
           items:(i.data || []).filter(x => x.is_active !== false), units:un.data || [], whs:w.data || [],
-          pls:pl.data || [], locs:l.data || [], tenant:(tn.data || [])[0] || null, tallyCos:tc.data || [],
+          pls:pl.data || [], locs:l.data || [], tenant:(tn.data || [])[0] || null, tallyCos:tc.data || [], settings:(cs.data || [])[0] || {},
           uwh:(uw.data || []).reduce((a, x) => ((a[x.user_id] = a[x.user_id] || []).push(x.warehouse_id), a), {})};
   (bc.data || []).forEach(x => { if (!S.lk.bc[x.item_id]) S.lk.bc[x.item_id] = x.barcode; });
   (w.data || []).forEach(x => S.lk.wh[x.id] = x.name);
@@ -1490,7 +1492,12 @@ const CRUD = {
     {k:'near_expiry_days', label:'Warn when a batch expires within (days)', type:'int', req:true},
     {k:'po_excess_pct', label:'Allowed receipt over purchase order (%)', type:'num', req:true},
     {k:'warn_below_cost', label:'Warn when selling below cost', type:'check'},
-    {k:'grn_needs_invoice_match', label:'Post goods received only after the supplier invoice matches', type:'check'},
+    {k:'invoice_check_on', label:'Check goods received against the supplier invoice', type:'check'},
+    {k:'blind_receiving', label:'Blind receiving: the scanner does not show the invoice or order quantities to the receiver', type:'check'},
+    {k:'po_three_way', label:'Three-way match: compare the invoice rate with the purchase order rate', type:'check'},
+    {k:'einvoice_qr_on', label:'Read the e-invoice QR code on supplier bills', type:'check'},
+    {k:'grn_needs_invoice_match', label:'Post goods received only after the supplier invoice matches', type:'check',
+     help:'Switch this on only after invoice reading is set up (ANTHROPIC_API_KEY in Supabase); otherwise no GRN can be posted.'},
     {k:'timezone', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
   role_backdate_limits:{table:'role_backdate_limits', noun:'limit', key:['tenant_id','role'], upsert:true, fields:[
     {k:'role', label:'Role', type:'select', options:() => opt(ROLE_LABEL), req:true},
@@ -2104,8 +2111,10 @@ async function openInvoiceFile(path, sourceDocId){
 }
 // what was received, one row per item, in base units and rate per base unit
 async function receivedFor(docId){
-  const {data:ls, error} = await S.sb.from('document_lines').select('item_id,qty,unit_factor,rate,discount_pct,taxable_value,gst_rate').eq('document_id', docId);
+  const {data:ls, error} = await S.sb.from('document_lines').select('item_id,qty,unit_factor,rate,discount_pct,taxable_value,gst_rate,order_line_id').eq('document_id', docId);
   if (error) throw error;
+  const olIds = [...new Set((ls || []).map(l => l.order_line_id).filter(Boolean))];
+  const {data:ols} = olIds.length ? await S.sb.from('order_lines').select('id,rate,discount_pct,unit_factor').in('id', olIds) : {data:[]};
   const ids = [...new Set((ls || []).map(l => l.item_id))];
   const {data:its} = ids.length ? await S.sb.from('items').select('id,sku,name,uom,hsn_code').in('id', ids) : {data:[]};
   const byItem = {};
@@ -2114,6 +2123,8 @@ async function receivedFor(docId){
     const b = byItem[l.item_id] = byItem[l.item_id] || {key:l.item_id, item_id:l.item_id, name:it.name, sku:it.sku, hsn:it.hsn_code, uom:it.uom,
       barcodes:S.lk.bc[l.item_id] ? [S.lk.bc[l.item_id]] : [], units:S.lk.units.filter(u => u.item_id === l.item_id), qty:0, taxable_value:0,
       rate:num(l.rate) / num(l.unit_factor || 1), discount_pct:num(l.discount_pct), gst_rate:l.gst_rate};
+    const ol = (ols || []).find(o => o.id === l.order_line_id);
+    if (ol && b.po_rate === undefined){ b.po_rate = num(ol.rate) / num(ol.unit_factor || 1); b.po_discount = num(ol.discount_pct); }
     b.qty = +(b.qty + num(l.qty)).toFixed(3); b.taxable_value = +(b.taxable_value + num(l.taxable_value)).toFixed(2);
   });
   return Object.values(byItem);
@@ -2126,11 +2137,11 @@ function checkHtml(res, received, editable, doc){
       `<option value="${x.key}" ${x.key === r.key ? 'selected' : ''}>${esc(x.name)} (${fmtQty(x.qty)} ${esc(x.uom || '')})</option>`).join('')}</select>`;
   return `<div class="ckhead ${st ? 'ok' : 'bad'}">${st ? '✓ The supplier invoice matches what was received.' : res.quantities_match ? 'Quantities match, but amounts or details differ.' : '✗ Quantities do not match the supplier invoice.'}</div>
     <ul class="cklist">${res.head.map(h => `<li class="${h.ok ? 'ok' : 'bad'}">${h.ok ? '✓' : '✗'} ${esc(h.text)}</li>`).join('')}</ul>
-    <div class="tablewrap ck"><table><thead><tr><th>Invoice line</th><th>Received item</th><th class="n">Invoice qty</th><th class="n">Received</th><th class="n">Rate (inv / ours)</th><th>Result</th></tr></thead><tbody>
+    <div class="tablewrap ck"><table><thead><tr><th>Invoice line</th><th>Received item</th><th class="n">Invoice qty</th><th class="n">Received</th><th class="n">Rate (inv / ours${res.rows.some(r => r.po_rate !== undefined) ? ' / PO' : ''})</th><th>Result</th></tr></thead><tbody>
     ${res.rows.map(r => `<tr><td>${esc(r.description)}<div class="muted">${fmtQty(r.inv_qty)} ${esc(r.unit || '')}${r.free_qty ? ` + ${fmtQty(r.free_qty)} free` : ''}${r.batch ? ', batch ' + esc(r.batch) : ''}</div></td>
       <td>${editable ? opts(r) : esc(r.item_name || 'Not received')}${r.factor && r.factor !== 1 ? `<div class="muted">${esc(r.factor_how)}</div>` : ''}</td>
       <td class="n">${r.inv_total_base !== undefined ? fmtQty(r.inv_total_base) : ''}</td><td class="n">${r.rec_qty !== undefined ? fmtQty(r.rec_qty) : ''}</td>
-      <td class="n">${r.inv_rate !== null && r.inv_rate !== undefined ? '₹' + fmtMoney(r.inv_rate) : '-'} / ${r.our_rate !== undefined ? '₹' + fmtMoney(r.our_rate) : '-'}</td>
+      <td class="n">${r.inv_rate !== null && r.inv_rate !== undefined ? '₹' + fmtMoney(r.inv_rate) : '-'} / ${r.our_rate !== undefined ? '₹' + fmtMoney(r.our_rate) : '-'}${r.po_rate !== undefined ? ' / ₹' + fmtMoney(r.po_rate) : ''}</td>
       <td>${chip(r)}${r.problems.length ? `<div class="muted">${r.problems.map(esc).join('<br>')}</div>` : ''}</td></tr>`).join('')}
     ${res.extra.map(r => `<tr><td class="muted">(not on the invoice)</td><td>${esc(r.item_name)}</td><td></td><td class="n">${fmtQty(r.rec_qty)}</td><td></td><td>${chip(r)}</td></tr>`).join('')}
     </tbody></table></div>
@@ -2144,8 +2155,14 @@ function invoiceCheck(doc){
   modal(`Check supplier invoice, ${doc.doc_no}`, `
     <p class="note">Upload the supplier's invoice (a PDF, or a clear photo). It is read by Claude and compared with what was received on this ${doc.doc_type === 'grn' ? 'GRN' : 'return'}: item, quantity, rate, GST and total. The file is kept with the entry.</p>
     <label for="invf">Supplier invoice</label><input id="invf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+    ${S.lk.settings.einvoice_qr_on !== false ? `<label for="invqr">E-invoice QR (optional)</label>
+      <input id="invqr" placeholder="Click here, then scan the QR code on the bill with a 2D scanner" autocomplete="off">
+      <p class="note">The QR is signed by the GST e-invoice system. It confirms the bill number, date, GSTINs, total and IRN, and catches a bill entered twice.</p>` : ''}
     <div id="invst" class="note" style="margin-top:10px"></div>`, 'Read invoice', async el => {
       const f = el.querySelector('#invf').files[0], st = el.querySelector('#invst');
+      const qrText = (el.querySelector('#invqr') || {}).value || '';
+      const qr = qrText.trim() ? WMSInvoice.parseEInvoiceQR(qrText) : null;
+      if (qrText.trim() && !qr){ st.textContent = 'That is not an e-invoice QR code. Scan the QR (not the barcode), or leave the box empty.'; return false; }
       if (!f){ toast('Choose the invoice file.', 'err'); return false; }
       if (f.size > 15 * 1048576){ toast('The file is larger than 15 MB.', 'err'); return false; }
       st.textContent = 'Reading the invoice… this takes about 15 to 40 seconds.';
@@ -2154,7 +2171,10 @@ function invoiceCheck(doc){
           doc.party_id ? S.sb.from('item_supplier_names').select('supplier_text,item_id,factor').eq('party_id', doc.party_id).then(r => r.data || []) : [],
           uploadInvoiceFile(f, doc.id)]);
         const ours = [...new Set([...(S.lk.whs || []).filter(w => w.id === doc.warehouse_id).map(w => w.gstin), S.lk.tenant && S.lk.tenant.gstin].filter(Boolean))];
-        const ctx = {party_doc_no:doc.party_doc_no || '', party_gstin:doc.party_gstin, our_gstins:ours, doc_total:doc.doc_value, learned, force:{}};
+        const irn = (qr && qr.Irn) || (/^[0-9a-f]{64}$/i.test(invoice.irn || '') ? String(invoice.irn).toLowerCase() : null);
+        const {data:dups} = await S.sb.rpc('duplicate_bill', {p_tenant:S.tenant, p_doc:doc.id, p_irn:irn, p_party:doc.party_id || null, p_bill_no:(qr && qr.DocNo) || invoice.invoice_no || doc.party_doc_no || null});
+        const ctx = {party_doc_no:doc.party_doc_no || '', party_gstin:doc.party_gstin, our_gstins:ours, doc_total:doc.doc_value, learned, force:{},
+                     three_way:S.lk.settings.po_three_way !== false, qr, irn, duplicates:dups || []};
         closeModal(); showCheck(doc, invoice, received, ctx, path);
       }catch(e){ st.textContent = e.message; return false; }
       return false;
@@ -2175,10 +2195,11 @@ function showCheck(doc, invoice, received, ctx, path){
     }
     const keep = {status:res.status, quantities_match:res.quantities_match, summary:res.summary, head:res.head, invoice:res.invoice,
                   rows:res.rows.map(r => ({description:r.description, unit:r.unit, inv_qty:r.inv_qty, free_qty:r.free_qty, inv_total_base:r.inv_total_base, rec_qty:r.rec_qty,
-                                          item_id:r.item_id, item_name:r.item_name, inv_rate:r.inv_rate, our_rate:r.our_rate, status:r.status, problems:r.problems})),
+                                          item_id:r.item_id, item_name:r.item_name, inv_rate:r.inv_rate, our_rate:r.our_rate, po_rate:r.po_rate, status:r.status, problems:r.problems})),
                   extra:res.extra};
     const {error} = await S.sb.rpc('set_invoice_check', {p_doc:doc.id, p_result:keep, p_status:res.status, p_file:path});
     if (error){ toast(error.message, 'err'); return false; }
+    if (ctx.irn){ const {error:ie} = await S.sb.rpc('set_supplier_einvoice', {p_doc:doc.id, p_irn:ctx.irn, p_qr:ctx.qr || null}); if (ie) toast(ie.message, 'err'); }
     if (doc.party_id){ const rows = WMSInvoice.learnRows(res, doc.party_id, S.tenant); if (rows.length) await S.sb.from('item_supplier_names').upsert(rows, {onConflict:'party_id,supplier_text'}); }
     if (doc.status === 'draft' && res.status === 'matched'){ closeModal(); await postDoc(doc.id, doc.doc_no); }
     else { toast(res.status === 'matched' ? 'Saved: the invoice matches.' : 'Saved with differences. Fix the entry and check again, or take it up with the supplier.', res.status === 'matched' ? '' : 'err'); load(); }
