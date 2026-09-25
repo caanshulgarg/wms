@@ -326,7 +326,7 @@ async function loadMasters(){
       fetchAll('sales_points', 'id,name,sp_type,warehouse_id,is_active')
     ]);
     const units = await fetchAll('item_units', 'item_id,unit,factor').catch(() => []);
-    const settings = (await fetchAll('company_settings', 'invoice_check_on,blind_receiving,po_three_way,einvoice_qr_on').catch(() => []))[0] || {};
+    const settings = (await fetchAll('company_settings', 'invoice_check_on,blind_receiving,po_three_way,einvoice_qr_on,invoice_reader').catch(() => []))[0] || {};
     m = {items, bcs, locs, parties, whs, sps, units, settings, at:Date.now()};
     LS.set(key, m);
   }catch(e){
@@ -562,15 +562,15 @@ function recFromLines(d){
 }
 async function checkInvoice(file){
   const d = S.doc;
-  if (!navigator.onLine) return toast('Reading the invoice needs a connection.', 'err');
+  if (!navigator.onLine && (S.m.settings || {}).invoice_reader === 'claude_first') return toast('Reading the invoice needs a connection.', 'err');
   if (file.size > 15 * 1048576) return toast('The file is larger than 15 MB.', 'err');
-  toast('Reading the supplier invoice… about 20 seconds.');
+  toast('Reading the supplier invoice…');
   try{
-    const {data, error} = await S.sb.functions.invoke('read-invoice', {body:{file_base64:await fileB64(file), media_type:file.type || 'image/jpeg'}});
-    if (error){ let m = error.message; try{ m = (await error.context.json()).error || m; }catch(e){} throw new Error(m); }
-    if (!data || !data.ok) throw new Error((data && data.error) || 'The invoice could not be read.');
+    const party0 = S.m.parties.find(p => p.id === d.party_id) || {}, wh0 = S.m.whs.find(w => w.id === S.wh) || {};
+    const rr = await WMSInvoice.readSmart(file, {sb:S.sb, mode:(S.m.settings || {}).invoice_reader || 'free_first',
+                                                 hints:{our_gstins:[wh0.gstin].filter(Boolean), party_gstin:party0.gstin}, onStep:t => toast(t)});
     if (S.doc !== d) return;
-    const inv = data.invoice;
+    const inv = rr.invoice; inv.read_label = rr.label; inv.read_confident = rr.confident;
     // fill what the bill tells us and the entry does not have yet
     if (!d.party_id && inv.supplier_gstin){ const p = S.m.parties.find(x => x.gstin && x.gstin.toUpperCase() === String(inv.supplier_gstin).toUpperCase()); if (p){ d.party_id = p.id; d.auto.party = 'from the GSTIN on the invoice'; } }
     if (!d.party_doc_no && inv.invoice_no) d.party_doc_no = String(inv.invoice_no);
@@ -608,7 +608,7 @@ function invResultHtml(r){
   const bad = r.rows.filter(x => x.status !== 'ok').concat(r.extra), hb = r.head.filter(h => !h.ok);
   return `<div class="invres ${r.status === 'matched' ? 'ok' : 'bad'}"><b>${r.status === 'matched' ? '✓ Matches the supplier invoice' : r.quantities_match ? 'Quantities match; amounts differ' : '✗ Does not match the supplier invoice'}</b>
     ${bad.concat(hb).length ? `<ul>${hb.map(h => `<li>${esc(h.text)}</li>`).join('')}${bad.map(x => `<li>${esc(x.item_name || x.description)}: ${esc(x.problems.join('; '))}</li>`).join('')}</ul>` : ''}
-    <div class="sub">Invoice ${esc(r.invoice.no || '')}, ${r.rows.length} line(s). Scan more or change quantities, and it checks again.</div></div>`;
+    <div class="sub">Invoice ${esc(r.invoice.no || '')}, ${r.rows.length} line(s). ${esc(r.invoice.read_label || '')}${r.invoice.read_confident === false ? ': compare with the bill' : ''}. Scan more or change quantities, and it checks again.</div></div>`;
 }
 
 /* ---------- Auto-fill from what the system already knows ---------- */
