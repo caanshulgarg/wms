@@ -254,5 +254,165 @@
       `</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
   }
 
-  root.WMSTally = {load, build, envelope};
+  /* =====================================================================
+     TALLY -> WMS: stock items and parties
+     Pure functions (no network): the office app fetches Tally's XML through
+     the bridge's read-only /export address and passes the text in here.
+     Rules: never renames, deletes or deactivates anything in WMS; fills
+     blanks; links names; adds a GST rate row only when Tally's rate is newer.
+     ===================================================================== */
+  const exportRequest = (id, type, fetch, company) =>
+    '<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>' + id + '</ID></HEADER>' +
+    '<BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>' + (company ? `<SVCURRENTCOMPANY>${xe(company)}</SVCURRENTCOMPANY>` : '') +
+    '</STATICVARIABLES><TDL><TDLMESSAGE>' +
+    `<COLLECTION NAME="${id}" ISMODIFY="No"><TYPE>${type}</TYPE><FETCH>${fetch}</FETCH></COLLECTION>` +
+    '</TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>';
+  const PULL_REQUESTS = {
+    items:  c => exportRequest('WMSPullItems', 'StockItem',
+      'NAME,PARENT,BASEUNITS,GUID,ALTERID,ISBATCHWISEON,ISPERISHABLEON,HSNCODE,GSTDETAILS.LIST,HSNDETAILS.LIST,MRPDETAILS.LIST,STANDARDCOSTLIST.LIST,STANDARDPRICELIST.LIST', c),
+    ledgers:c => exportRequest('WMSPullLedgers', 'Ledger',
+      'NAME,PARENT,GUID,ALTERID,PARTYGSTIN,LEDSTATENAME,STATENAME,ADDRESS.LIST,PINCODE,LEDGERPHONE,LEDGERMOBILE,EMAIL,LEDGSTREGDETAILS.LIST,LEDMAILINGDETAILS.LIST', c),
+    groups: c => exportRequest('WMSPullGroups', 'Group', 'NAME,PARENT', c)
+  };
+
+  // Tally sometimes sends control characters that no XML reader accepts
+  const cleanXml = t => String(t || '').replace(/&#(x0*[0-8bcef]|x0*1[0-9a-f]|0*[0-8]|0*1[1-2]|0*1[4-9]|0*2[0-9]|0*3[01]);/gi, '')
+                                     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  function parseXml(text){
+    const P = root.DOMParser ? new root.DOMParser() : null;
+    if (!P) throw new Error('No XML reader in this browser.');
+    const doc = P.parseFromString(cleanXml(text), 'text/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('Tally sent data that could not be read.');
+    return doc;
+  }
+  const kids = (el, tag) => el ? [...el.children].filter(c => c.tagName === tag) : [];
+  const kid = (el, tag) => kids(el, tag)[0] || null;
+  const txt = (el, tag) => { const k = kid(el, tag); return k ? k.textContent.trim() : ''; };
+  const nameOf = el => el.getAttribute('NAME') || txt(el, 'NAME') || (kid(el, 'NAME.LIST') ? txt(kid(el, 'NAME.LIST'), 'NAME') : '');
+  const tdate = s => /^\d{8}$/.test(s || '') ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : null;
+  // of several dated blocks (GST details, MRP, cost), use the latest
+  const latest = (blocks, dateTag) => blocks.slice().sort((a, b) => (tdate(txt(b, dateTag)) || '') > (tdate(txt(a, dateTag)) || '') ? 1 : -1)[0] || null;
+  const rateNum = s => { const m = String(s || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
+  const STATE_BY_NAME = Object.fromEntries(Object.entries(STATES).map(([k, v]) => [v.toLowerCase().replace(/&/g, 'and').replace(/[^a-z]/g, ''), k]));
+  const stateCode = name => STATE_BY_NAME[String(name || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z]/g, '')] || null;
+  const GSTIN_RE = /^[0-9]{2}[A-Z0-9]{13}$/;
+
+  function parseItems(text){
+    const doc = parseXml(text);
+    return [...doc.getElementsByTagName('STOCKITEM')].map(el => {
+      const name = nameOf(el); if (!name) return null;
+      const gd = latest(kids(el, 'GSTDETAILS.LIST'), 'APPLICABLEFROM');
+      const hd = latest(kids(el, 'HSNDETAILS.LIST'), 'APPLICABLEFROM');
+      const hsn = (txt(hd, 'HSNCODE') || txt(gd, 'HSNCODE') || txt(el, 'HSNCODE')).replace(/\s/g, '');
+      let gst = null, taxability = txt(gd, 'TAXABILITY');
+      if (gd){
+        const rates = [...gd.getElementsByTagName('RATEDETAILS.LIST')].map(r => ({head:txt(r, 'GSTRATEDUTYHEAD').toUpperCase(), rate:rateNum(txt(r, 'GSTRATE'))}));
+        const ig = rates.find(r => /IGST|INTEGRATED/.test(r.head) && r.rate !== null);
+        const cg = rates.find(r => /^CGST|CENTRAL/.test(r.head) && r.rate !== null);
+        gst = ig ? ig.rate : cg ? cg.rate * 2 : null;
+        if (gst === null && /exempt|nil|non-gst/i.test(taxability)) gst = 0;
+      }
+      const cess = gd ? ([...gd.getElementsByTagName('RATEDETAILS.LIST')].map(r => ({head:txt(r, 'GSTRATEDUTYHEAD').toUpperCase(), rate:rateNum(txt(r, 'GSTRATE'))}))
+                         .find(r => /CESS/.test(r.head) && !/STATE/.test(r.head)) || {}).rate || 0 : 0;
+      const mrpBlock = latest(kids(el, 'MRPDETAILS.LIST'), 'FROMDATE');
+      const mrp = mrpBlock ? rateNum(txt(kid(mrpBlock, 'MRPRATEDETAILS.LIST'), 'MRPRATE')) : null;
+      const cost = latest(kids(el, 'STANDARDCOSTLIST.LIST'), 'DATE');
+      return {name, group:txt(el, 'PARENT'), unit:txt(el, 'BASEUNITS') || 'Nos', guid:txt(el, 'GUID'),
+              hsn, gst_rate:gst, cess_rate:cess || 0, gst_from:tdate(txt(gd, 'APPLICABLEFROM')),
+              mrp:mrp || null, cost:cost ? rateNum(txt(cost, 'RATE')) : null,
+              batch:/^yes$/i.test(txt(el, 'ISBATCHWISEON')), expiry:/^yes$/i.test(txt(el, 'ISPERISHABLEON'))};
+    }).filter(Boolean);
+  }
+
+  function parseParties(ledgerText, groupText){
+    const gdoc = parseXml(groupText), parent = {};
+    [...gdoc.getElementsByTagName('GROUP')].forEach(g => { const n = nameOf(g); if (n) parent[n] = txt(g, 'PARENT'); });
+    const kindOf = grp => {                      // walk up the group tree to Sundry Debtors / Creditors
+      for (let g = grp, i = 0; g && i < 30; g = parent[g], i++){
+        if (/^sundry debtors$/i.test(g)) return 'customer';
+        if (/^sundry creditors$/i.test(g)) return 'supplier';
+      }
+      return null;
+    };
+    const doc = parseXml(ledgerText);
+    return [...doc.getElementsByTagName('LEDGER')].map(el => {
+      const name = nameOf(el), kind = kindOf(txt(el, 'PARENT'));
+      if (!name || !kind) return null;
+      const reg = latest(kids(el, 'LEDGSTREGDETAILS.LIST'), 'APPLICABLEFROM');
+      const mail = latest(kids(el, 'LEDMAILINGDETAILS.LIST'), 'APPLICABLEFROM');
+      const addrList = kid(mail, 'ADDRESS.LIST') || kid(el, 'ADDRESS.LIST');
+      const addr = addrList ? kids(addrList, 'ADDRESS').map(a => a.textContent.trim()).filter(Boolean) : [];
+      let gstin = (txt(reg, 'GSTIN') || txt(el, 'PARTYGSTIN')).toUpperCase().replace(/\s/g, '');
+      if (!GSTIN_RE.test(gstin)) gstin = null;
+      const stateName = txt(reg, 'STATE') || txt(mail, 'STATE') || txt(el, 'LEDSTATENAME') || txt(el, 'STATENAME');
+      const pin = (txt(mail, 'PINCODE') || txt(el, 'PINCODE')).replace(/\s/g, '');
+      return {name, kind, group:txt(el, 'PARENT'), guid:txt(el, 'GUID'), gstin,
+              state_code:gstin ? gstin.slice(0, 2) : stateCode(stateName),
+              address1:addr[0] || null, address2:addr.slice(1).join(', ') || null,
+              pincode:/^\d{6}$/.test(pin) ? pin : null,
+              phone:txt(el, 'LEDGERMOBILE') || txt(el, 'LEDGERPHONE') || null, email:txt(el, 'EMAIL') || null};
+    }).filter(Boolean);
+  }
+
+  // What to change in WMS. wms = {items:[...v_items_master rows], parties:[...parties rows], today:'yyyy-mm-dd'}
+  function planPull(tally, wms){
+    const lc = s => String(s || '').trim().toLowerCase();
+    const plan = {items:{create:[], update:[], rates:[], skipped:[]}, parties:{create:[], update:[], skipped:[]}};
+    const byTally = new Map(), byName = new Map(), skus = new Set(wms.items.map(i => lc(i.sku)));
+    wms.items.forEach(i => { if (i.tally_stock_item) byTally.set(lc(i.tally_stock_item), i); byName.set(lc(i.name), i); });
+    const seenItem = new Set();
+    for (const t of tally.items || []){
+      if (seenItem.has(lc(t.name))) continue; seenItem.add(lc(t.name));
+      const w = byTally.get(lc(t.name)) || byName.get(lc(t.name));
+      const hsnOk = /^\d{4,8}$/.test(t.hsn);
+      if (!w){
+        if (!hsnOk){ plan.items.skipped.push({name:t.name, why:t.hsn ? `HSN "${t.hsn}" is not 4 to 8 digits` : 'no HSN code in Tally'}); continue; }
+        if (t.gst_rate === null){ plan.items.skipped.push({name:t.name, why:'no GST rate in Tally'}); continue; }
+        let base = t.name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 36) || 'ITEM', sku = base;
+        for (let n = 2; skus.has(lc(sku)); n++) sku = base.slice(0, 32) + '-' + n;
+        skus.add(lc(sku));
+        const from = !t.gst_from || t.gst_from < '2017-07-01' ? '2017-07-01' : t.gst_from;
+        plan.items.create.push({row:{sku, name:t.name, uom:t.unit, hsn_code:t.hsn, mrp:t.mrp, std_purchase_price:t.cost,
+                                     track_batch:t.batch, track_expiry:t.expiry, tally_stock_item:t.name},
+                                rate:{effective_from:from, gst_rate:t.gst_rate, cess_rate:t.cess_rate}});
+        continue;
+      }
+      const ch = {};
+      if (!w.tally_stock_item) ch.tally_stock_item = t.name;
+      if (hsnOk && t.hsn !== w.hsn_code) ch.hsn_code = t.hsn;
+      if ((w.mrp === null || w.mrp === undefined || num(w.mrp) === 0) && t.mrp) ch.mrp = t.mrp;
+      if ((w.std_purchase_price === null || w.std_purchase_price === undefined || num(w.std_purchase_price) === 0) && t.cost) ch.std_purchase_price = t.cost;
+      if (t.batch && !w.track_batch) ch.track_batch = true;
+      if (t.expiry && !w.track_expiry) ch.track_expiry = true;
+      if (Object.keys(ch).length) plan.items.update.push({id:w.id, name:w.name, changes:ch});
+      // a GST rate change is added only when Tally's rate is newer than the one WMS has
+      if (t.gst_rate !== null && (w.current_gst_rate === null || w.current_gst_rate === undefined || num(w.current_gst_rate) !== num(t.gst_rate) || num(w.current_cess_rate) !== num(t.cess_rate))){
+        const from = t.gst_from && t.gst_from > (w.gst_from || '') ? t.gst_from : null;
+        if (from || w.current_gst_rate === null || w.current_gst_rate === undefined)
+          plan.items.rates.push({item_id:w.id, name:w.name, effective_from:from || (t.gst_from && t.gst_from >= '2017-07-01' ? t.gst_from : '2017-07-01'),
+                                 gst_rate:t.gst_rate, cess_rate:t.cess_rate, was:w.current_gst_rate});
+        else plan.items.skipped.push({name:w.name, why:`GST ${t.gst_rate}% in Tally but ${w.current_gst_rate}% in WMS from a later date; left as it is`});
+      }
+    }
+    const pByTally = new Map(), pByName = new Map(), pByGstin = new Map();
+    wms.parties.forEach(p => { if (p.tally_ledger) pByTally.set(lc(p.tally_ledger), p); pByName.set(lc(p.name), p); if (p.gstin) pByGstin.set(p.gstin, p); });
+    const seenP = new Set();
+    for (const t of tally.parties || []){
+      if (seenP.has(lc(t.name))) continue; seenP.add(lc(t.name));
+      const w = pByTally.get(lc(t.name)) || pByName.get(lc(t.name)) || (t.gstin && pByGstin.get(t.gstin));
+      if (!w){
+        plan.parties.create.push({party_type:t.kind, name:t.name, gstin:t.gstin, state_code:t.state_code, address1:t.address1, address2:t.address2,
+                                  pincode:t.pincode, phone:t.phone, email:t.email, tally_ledger:t.name});
+        continue;
+      }
+      const ch = {};
+      if (!w.tally_ledger) ch.tally_ledger = t.name;
+      ['gstin','state_code','address1','address2','pincode','phone','email'].forEach(k => { if (!w[k] && t[k]) ch[k] = t[k]; });
+      if (w.party_type !== 'both' && w.party_type !== t.kind) ch.party_type = 'both';
+      if (Object.keys(ch).length) plan.parties.update.push({id:w.id, name:w.name, changes:ch});
+    }
+    return plan;
+  }
+
+  root.WMSTally = {load, build, envelope, PULL_REQUESTS, parseItems, parseParties, planPull};
 })(typeof window !== 'undefined' ? window : globalThis);
