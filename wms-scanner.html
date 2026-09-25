@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="wms-print.js"></script>
+<script src="wms-invoice.js"></script>
 <style>
 :root{
   --concrete:#E4E2DC; --panel:#FFFFFF; --ink:#16213A; --muted:#5C6474;
@@ -52,6 +53,8 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 .btn:disabled{opacity:.45}
 .hint{font-size:14px;color:var(--muted);margin:8px 0 0}
 .hint.auto{color:#1D6B3A;font-weight:500}
+.invres{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:14.5px}.invres.ok{background:#EEF7F1;color:#1D6B3A}.invres.bad{background:#FFF1EE;color:#A1331C}
+.invres ul{margin:6px 0 4px 18px;padding:0}.invres .sub{color:var(--muted);margin-top:4px}
 .bexp{display:flex;gap:8px;margin-top:6px}
 .bexp label{flex:1;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 .bexp input{height:34px;border:1px solid var(--line,#D4D8E0);border-radius:6px;padding:0 8px;font-size:15px;min-width:0}
@@ -322,7 +325,8 @@ async function loadMasters(){
       fetchAll('warehouses', 'id,code,name,state_code,gstin,is_active,receiving_location_id'),
       fetchAll('sales_points', 'id,name,sp_type,warehouse_id,is_active')
     ]);
-    m = {items, bcs, locs, parties, whs, sps, at:Date.now()};
+    const units = await fetchAll('item_units', 'item_id,unit,factor').catch(() => []);
+    m = {items, bcs, locs, parties, whs, sps, units, at:Date.now()};
     LS.set(key, m);
   }catch(e){
     m = LS.get(key, null);
@@ -330,6 +334,7 @@ async function loadMasters(){
     else toast('Offline: using the item list saved on this phone.');
   }
   const act = a => a.filter(x => x.is_active !== false);
+  S.m.units = m.units || [];
   S.m.items = act(m.items).filter(i => !i.is_template); S.m.locs = act(m.locs); S.m.parties = act(m.parties); S.m.whs = act(m.whs); S.m.sps = act(m.sps);
   S.m.byId = {}; S.m.bySku = {}; S.m.barcodes = {};
   S.m.items.forEach(i => { S.m.byId[i.id] = i; S.m.bySku[i.sku.toUpperCase()] = i; });
@@ -506,6 +511,59 @@ function startDoc(type){
   renderDoc();
 }
 
+/* ---------- Supplier invoice check while receiving ---------- */
+const fileB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => bad(r.error); r.readAsDataURL(f); });
+function recFromLines(d){
+  const by = {};
+  d.lines.filter(l => num(l.qty) > 0).forEach(l => {
+    const it = S.m.byId[l.item_id] || {};
+    const b = by[l.item_id] = by[l.item_id] || {key:l.item_id, item_id:l.item_id, name:it.name, sku:it.sku, hsn:it.hsn_code, uom:it.uom,
+      barcodes:Object.entries(S.m.barcodes).filter(([, v]) => v.item_id === l.item_id).map(([k]) => k).slice(0, 5),
+      units:(S.m.units || []).filter(u => u.item_id === l.item_id), qty:0, rate:l.rate === null ? null : num(l.rate), discount_pct:num(l.discount_pct), taxable_value:0, gst_rate:null};
+    b.qty = +(b.qty + num(l.qty)).toFixed(3);
+    b.taxable_value = +(b.taxable_value + num(l.qty) * num(l.rate) * (1 - num(l.discount_pct) / 100)).toFixed(2);
+  });
+  return Object.values(by);
+}
+async function checkInvoice(file){
+  const d = S.doc;
+  if (!navigator.onLine) return toast('Reading the invoice needs a connection.', 'err');
+  if (file.size > 15 * 1048576) return toast('The file is larger than 15 MB.', 'err');
+  toast('Reading the supplier invoice… about 20 seconds.');
+  try{
+    const {data, error} = await S.sb.functions.invoke('read-invoice', {body:{file_base64:await fileB64(file), media_type:file.type || 'image/jpeg'}});
+    if (error){ let m = error.message; try{ m = (await error.context.json()).error || m; }catch(e){} throw new Error(m); }
+    if (!data || !data.ok) throw new Error((data && data.error) || 'The invoice could not be read.');
+    if (S.doc !== d) return;
+    const inv = data.invoice;
+    // fill what the bill tells us and the entry does not have yet
+    if (!d.party_id && inv.supplier_gstin){ const p = S.m.parties.find(x => x.gstin && x.gstin.toUpperCase() === String(inv.supplier_gstin).toUpperCase()); if (p){ d.party_id = p.id; d.auto.party = 'from the GSTIN on the invoice'; } }
+    if (!d.party_doc_no && inv.invoice_no) d.party_doc_no = String(inv.invoice_no);
+    if (inv.invoice_date && (!d.party_doc_date || d.party_doc_date === today())) d.party_doc_date = inv.invoice_date;
+    d.invRaw = inv; d.invFile = file;
+    await runInvoiceCompare();
+  }catch(e){ toast(e.message, 'err'); }
+}
+async function runInvoiceCompare(){
+  const d = S.doc, inv = d.invRaw; if (!inv) return;
+  let learned = [];
+  if (d.party_id && navigator.onLine){ const {data} = await S.sb.from('item_supplier_names').select('supplier_text,item_id,factor').eq('party_id', d.party_id); learned = data || []; }
+  const party = S.m.parties.find(p => p.id === d.party_id) || {}, wh = S.m.whs.find(w => w.id === S.wh) || {};
+  const res = WMSInvoice.compare(inv, recFromLines(d), {party_doc_no:d.party_doc_no, party_gstin:party.gstin, our_gstins:[wh.gstin].filter(Boolean), doc_total:null, learned});
+  // batch and expiry printed on the bill go onto matched lines that have none
+  res.rows.forEach(r => { if (!r.item_id || (!r.batch && !r.expiry)) return;
+    d.lines.filter(l => l.item_id === r.item_id && !l.batch_no).forEach(l => { l.batch_no = r.batch || l.batch_no; l.expiry_date = r.expiry || l.expiry_date; }); });
+  d.inv = res;
+  if (res.status === 'matched') beep(); else beep(false);
+  renderDoc();
+}
+function invResultHtml(r){
+  const bad = r.rows.filter(x => x.status !== 'ok').concat(r.extra), hb = r.head.filter(h => !h.ok);
+  return `<div class="invres ${r.status === 'matched' ? 'ok' : 'bad'}"><b>${r.status === 'matched' ? '✓ Matches the supplier invoice' : r.quantities_match ? 'Quantities match; amounts differ' : '✗ Does not match the supplier invoice'}</b>
+    ${bad.concat(hb).length ? `<ul>${hb.map(h => `<li>${esc(h.text)}</li>`).join('')}${bad.map(x => `<li>${esc(x.item_name || x.description)}: ${esc(x.problems.join('; '))}</li>`).join('')}</ul>` : ''}
+    <div class="sub">Invoice ${esc(r.invoice.no || '')}, ${r.rows.length} line(s). Scan more or change quantities, and it checks again.</div></div>`;
+}
+
 /* ---------- Auto-fill from what the system already knows ---------- */
 const online = () => navigator.onLine && S.sb;
 function note(t){ return `<p class="hint auto">✓ ${t}</p>`; }
@@ -632,6 +690,8 @@ function addLine(item, qty, code, extra={}){
 
 function renderDoc(){
   const d = S.doc, cfg = DOC[d.type];
+  if (d.invRaw && d.type === 'grn'){ const sig = JSON.stringify(d.lines.map(l => [l.item_id, l.qty, l.rate])) + d.party_doc_no + d.party_id;
+    if (sig !== d.invSig){ d.invSig = sig; if (d.inv) { runInvoiceCompare(); return; } } }
   setBar(cfg.title, {back:true}); showDock(true, true);
   const parties = S.m.parties.filter(p => cfg.party && (p.party_type === cfg.party || p.party_type === 'both'));
   const otherWhs = S.m.whs;
@@ -642,6 +702,9 @@ function renderDoc(){
     ${d.party_id && d.auto.party ? note('Supplier ' + esc(d.auto.party)) : d.auto.partyHint ? `<p class="hint">${esc(d.auto.partyHint)}</p>` : ''}
     <div class="row"><div><label for="pdn">Supplier bill no.</label><input id="pdn" value="${esc(d.party_doc_no)}"></div>
     <div><label for="pdd">Bill date</label><input id="pdd" type="date" value="${esc(d.party_doc_date)}"></div></div>
+    <button class="btn" id="invBtn" style="margin-top:12px;width:100%">${d.inv ? 'Check again with the supplier invoice' : 'Check with the supplier invoice (photo or PDF)'}</button>
+    <input type="file" id="invFile" accept="application/pdf,image/*" capture="environment" class="hidden">
+    ${d.inv ? invResultHtml(d.inv) : ''}
     <label for="por">Against purchase order</label>
     <select id="por"><option value="">No order</option>${(d.poOptions || []).map(o => `<option value="${o.id}" ${o.id === d.order_id ? 'selected' : ''}>${esc(o.order_no)}, ${fmt(o.pending_qty)} pending</option>`).join('')}</select>
     ${d.po ? `<div style="margin-top:10px">${d.po.map(p => { const got = d.lines.filter(l => l.item_id === p.item_id).reduce((a, l) => a + num(l.qty), 0);
@@ -728,6 +791,8 @@ function renderDoc(){
   bind('#paid', e => { d.paid = e.target.value === '1'; });
   bind('#pdn', e => { d.party_doc_no = e.target.value.trim(); });
   bind('#pdd', e => { d.party_doc_date = e.target.value; });
+  const ib = $('#invBtn'); if (ib) ib.onclick = () => $('#invFile').click();
+  bind('#invFile', e => { const f = e.target.files[0]; e.target.value = ''; if (f) checkInvoice(f); });
   bind('#sp',  e => { d.sales_point_id = e.target.value; d.auto.sp = ''; if (e.target.value) LS.set('wms.sp.' + S.wh, e.target.value); });
   bind('#inc', e => { d.incl_tax = e.target.value === '1'; });
   bind('#tow', e => { d.to_wh = e.target.value; d.to_loc = ''; d.auto.toLoc = ''; renderDoc(); autoIntoBin(); });
@@ -818,7 +883,13 @@ function buildPayload(d, post){
   }));
   const serials = {};
   d.lines.filter(l => num(l.qty) > 0).reverse().forEach((l, ix) => { if ((l.serials || []).length) serials[ix + 1] = l.serials; });
-  return {tenant:S.tenant, prefix:DOC[d.type].prefix, header, lines, serials, post, against_no:d.against_no || null, queuedAt:new Date().toISOString()};
+  const invCheck = d.inv && d.type === 'grn' ? {status:d.inv.status, result:{status:d.inv.status, quantities_match:d.inv.quantities_match, summary:d.inv.summary, head:d.inv.head, invoice:d.inv.invoice,
+      rows:d.inv.rows.map(r => ({description:r.description, unit:r.unit, inv_qty:r.inv_qty, free_qty:r.free_qty, inv_total_base:r.inv_total_base, rec_qty:r.rec_qty, item_id:r.item_id,
+                                item_name:r.item_name, inv_rate:r.inv_rate, our_rate:r.our_rate, status:r.status, problems:r.problems, factor:r.factor})), extra:d.inv.extra},
+      learn:d.party_id ? WMSInvoice.learnRows(d.inv, d.party_id, S.tenant) : []} : null;
+  const queuedAt = new Date().toISOString();
+  if (invCheck && d.invFile) (S.invFiles = S.invFiles || {})[queuedAt] = d.invFile;
+  return {tenant:S.tenant, prefix:DOC[d.type].prefix, header, lines, serials, post, against_no:d.against_no || null, queuedAt, invCheck};
 }
 
 async function nextDocNo(type, prefix, table='documents', col='doc_no'){
@@ -854,6 +925,13 @@ async function sendPayload(p){
     (ld || []).forEach(x => (p.serials[x.line_no] || []).forEach(sn => rows.push({document_line_id:x.id, serial_no:sn})));
     const {error:se} = await S.sb.from('document_line_serials').insert(rows);
     if (se){ await S.sb.from('documents').delete().eq('id', docId); throw se; }
+  }
+  if (p.invCheck){
+    let path = null; const f = (S.invFiles || {})[p.queuedAt];
+    if (f){ path = `${S.tenant}/${docId}/${Date.now()}-${String(f.name || 'invoice.jpg').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-60)}`;
+      const {error:ue} = await S.sb.storage.from('invoices').upload(path, f, {contentType:f.type || 'image/jpeg'}); if (ue) path = null; }
+    await S.sb.rpc('set_invoice_check', {p_doc:docId, p_result:p.invCheck.result, p_status:p.invCheck.status, p_file:path});
+    if (p.invCheck.learn && p.invCheck.learn.length) await S.sb.from('item_supplier_names').upsert(p.invCheck.learn, {onConflict:'party_id,supplier_text'});
   }
   if (p.post){ await postWithPrompts(docId, docNo); docNo = await finalNo(docId); }
   return {no:docNo, id:docId};
@@ -965,7 +1043,18 @@ async function showStock(item){
       ${rows.length ? `<table><thead><tr><th>Warehouse</th><th>Bin</th><th class="n">Qty</th></tr></thead><tbody>
         ${rows.map(r => `<tr><td>${esc(r.warehouse)}</td><td>${esc(r.bin || 'No bin')}</td><td class="n">${fmt(r.qty_on_hand)}</td></tr>`).join('')}</tbody></table>`
       : `<div class="empty">No stock anywhere. Receive goods to add stock.</div>`}
-    </div>`;
+    </div>
+    <div class="panel" id="lotPanel"><p class="hint">Loading lots…</p></div>`;
+  // which supplier invoice the stock here came from (cost only for roles that see values)
+  const {data:lots} = await S.sb.from('v_lots').select('lot_code,supplier,supplier_invoice_no,supplier_invoice_date,bin,batch_no,expiry_date,qty_remaining,purchase_cost,invoice_check_status')
+    .eq('item_id', item.id).eq('warehouse_id', S.wh).gt('qty_remaining', 0).order('inward_date');
+  const showCost = ['owner','admin','manager','accountant'].includes(S.role);
+  const lp = $('#lotPanel'); if (!lp) return;
+  lp.innerHTML = (lots || []).length ? `<div style="font-weight:600;margin-bottom:6px">In stock here, by supplier invoice</div>
+      ${(lots || []).map(l => `<div class="line" style="grid-template-columns:1fr auto"><div><div class="nm">${esc(l.supplier || 'Opening or adjustment')}${l.supplier_invoice_no ? ', bill ' + esc(l.supplier_invoice_no) : ''}</div>
+        <div class="sub">${esc(l.lot_code)}${l.bin ? ', bin ' + esc(l.bin) : ''}${l.batch_no ? ', batch ' + esc(l.batch_no) : ''}${l.expiry_date ? ', exp ' + esc(l.expiry_date) : ''}${showCost ? `, cost ₹${fmt(l.purchase_cost)}` : ''}${l.invoice_check_status === 'matched' ? ', bill checked ✓' : ''}</div></div>
+        <div class="qty"><b>${fmt(l.qty_remaining)}</b></div></div>`).join('')}`
+    : `<p class="hint">No lots in stock in this warehouse.</p>`;
 }
 
 /* ---------- Put away and refill (bin-to-bin moves) ---------- */
