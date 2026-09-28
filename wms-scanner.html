@@ -65,7 +65,11 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
   padding:16px 14px;text-align:left;min-height:96px}
 .tile b{display:block;font:700 24px/1.05 var(--cond)}
 .tile span{font-size:14px;color:var(--muted)}
-.tile.wide{grid-column:1/-1;border-left-color:var(--hivis)}
+.tile.wide{grid-column:1/-1}.tile.warn{border-left-color:var(--hivis);text-align:left}
+.tiles.small .tile{border-left-width:4px;padding-top:10px;padding-bottom:10px}.tiles.small .tile b{font-size:19px}.tiles.small .tile span{font-size:13px}
+.tiles[hidden]{display:none}
+.morejobs{display:block;width:100%;margin:12px 0 10px;background:none;border:1px dashed var(--line);border-radius:6px;padding:12px;font:600 16px/1 var(--sans);color:var(--ink)}
+.lnk{background:none;border:0;color:var(--muted);text-decoration:underline;padding:0;font-size:14px}
 
 /* current bin */
 .binchip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--ink);color:#fff;
@@ -173,8 +177,8 @@ const DOC = {
   grn:           {title:'Receive goods', prefix:'GRN-', party:'supplier', rate:'std_purchase_price'},
   sales_invoice: {title:'Sell',          prefix:'INV-', party:'customer', rate:'mrp'},
   transfer:      {title:'Move stock',    prefix:'TRF-'},
-  adjustment_in: {title:'Adjust stock',  prefix:'ADJ-'},
-  adjustment_out:{title:'Adjust stock',  prefix:'ADJ-'},
+  adjustment_in: {title:'Correct stock',  prefix:'ADJ-'},
+  adjustment_out:{title:'Correct stock',  prefix:'ADJ-'},
   sales_return:  {title:'Customer return', prefix:'CRN-', party:'customer', rate:'mrp'},
   purchase_return:{title:'Return to supplier', prefix:'DN-', party:'supplier'}
 };
@@ -238,11 +242,12 @@ function viewSetup(){
   };
 }
 
-function viewLogin(){
+function viewLogin(email){
   setBar('Sign in'); showDock(false);
   $('#main').innerHTML = `
     <div class="panel">
-      <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+      ${LS.get('wms.join', null) ? '<p class="hint">Signing in also accepts your invitation.</p>' : ''}
+      <label for="em">Email</label><input id="em" type="email" autocomplete="username" value="${esc(email || '')}">
       <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
       <br><button class="btn primary" id="loginBtn">Sign in</button>
       <p class="hint"><button class="link" id="chgCfg" style="background:none;border:0;padding:0;color:var(--muted);text-decoration:underline">Server settings</button></p>
@@ -252,6 +257,7 @@ function viewLogin(){
     if (error) return toast(error.message, 'err');
     afterLogin();
   };
+  $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#loginBtn').click(); };
   $('#chgCfg').onclick = () => viewSetup();
 }
 
@@ -259,22 +265,58 @@ async function boot(){
   const c = wmsCfg();
   if (!window.supabase) return toast('Could not load the Supabase library. Check the internet connection and reload.', 'err');
   S.sb = window.supabase.createClient(c.url, c.key);
+  const jm = location.hash.match(/^#join=([a-f0-9]{32,})$/);          // invitation link
+  if (jm){ LS.set('wms.join', jm[1]); history.replaceState(null, '', location.pathname + location.search); }
   const {data} = await S.sb.auth.getSession();
-  if (!data.session) return viewLogin();
+  if (!data.session) return LS.get('wms.join', null) ? viewJoin() : viewLogin();
   afterLogin();
+}
+window.addEventListener('hashchange', () => { if (/^#join=/.test(location.hash)) location.reload(); });   // invitation opened in a tab already showing the app
+const ROLE_NAME = {owner:'Owner', admin:'Admin', manager:'Manager', accountant:'Accountant', storekeeper:'Storekeeper', cashier:'Cashier'};
+async function viewJoin(){
+  const {data, error} = await S.sb.rpc('invite_info', {p_token:LS.get('wms.join', '')});
+  const inv = (data || [])[0];
+  if (error || !inv || inv.status !== 'pending'){
+    LS.del('wms.join'); viewLogin();
+    return toast(!inv ? 'That invitation link is not valid. Ask for a new one.' : inv.status === 'accepted' ? 'This invitation has already been used. Sign in.'
+                 : `This invitation has ${inv.status === 'expired' ? 'expired' : 'been cancelled'}. Ask for a new one.`, 'err');
+  }
+  setBar('Join ' + inv.company); showDock(false);
+  $('#main').innerHTML = `
+    <div class="panel">
+      <p>You are invited to <b>${esc(inv.company)}</b> as <b>${esc(ROLE_NAME[inv.role] || inv.role)}</b>. Choose a password to finish.</p>
+      <label for="em">Email</label><input id="em" type="email" value="${esc(inv.email)}" readonly>
+      <label for="pw">Choose a password (8 or more characters)</label><input id="pw" type="password" autocomplete="new-password">
+      <br><button class="btn primary" id="joinBtn">Create account and join</button>
+      <p class="hint">Already have an account with this email? <button class="lnk" id="si">Sign in instead</button></p>
+    </div>`;
+  const go = async () => {
+    const password = $('#pw').value; if (password.length < 8) return toast('Use a password of at least 8 characters.', 'err');
+    const {data:d, error:e} = await S.sb.auth.signUp({email:inv.email, password});
+    if (e){ if (/already|registered|exists/i.test(e.message)){ toast('This email already has an account. Sign in with its password.', 'err'); return viewLogin(inv.email); } return toast(e.message, 'err'); }
+    if (d.session) afterLogin(); else toast('Account created. Open the link in the email we sent, then sign in.');
+  };
+  $('#joinBtn').onclick = go; $('#pw').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#si').onclick = () => viewLogin(inv.email);
 }
 
 async function afterLogin(){
   const {data:{user}} = await S.sb.auth.getUser();
   if (!user) return viewLogin();
   S.user = user;
+  const jt = LS.get('wms.join', null);
+  if (jt){
+    LS.del('wms.join');
+    const {data:tid, error:je} = await S.sb.rpc('accept_invite', {p_token:jt});
+    if (je) toast(je.message, 'err'); else { LS.set('wms.ctx', {...LS.get('wms.ctx', {}), tenant:tid}); toast('Welcome. You are now in the team.', 'ok'); }
+  }
   const {data, error} = await S.sb.from('tenant_users').select('tenant_id, role, tenants(name)').eq('user_id', user.id).eq('is_active', true);
   const cachedTenants = LS.get('wms.tenants', []);
   S.tenants = error ? cachedTenants : (data || []).map(r => ({id:r.tenant_id, role:r.role, name:r.tenants?.name || 'Company'}));
   if (!error) LS.set('wms.tenants', S.tenants);
   if (!S.tenants.length) {
     setBar('No company'); showDock(false);
-    $('#main').innerHTML = `<div class="panel">This login is not linked to any company yet. Ask the company owner to add you, then sign in again.<br><br><button class="btn ghost" id="so">Sign out</button></div>`;
+    $('#main').innerHTML = `<div class="panel">This login is not in any company yet. Ask the company owner for an invitation link, open it, then sign in.<br><br><button class="btn ghost" id="so">Sign out</button></div>`;
     $('#so').onclick = signOut; return;
   }
   const ctx = LS.get('wms.ctx', {});
@@ -343,29 +385,34 @@ async function loadMasters(){
 }
 
 /* ---------- Home ---------- */
+// Each role sees the jobs it does every day; everything else is one tap away under More jobs.
+const TILES = {
+  grn:['Receive goods', 'Supplier delivery into bins'], sales_invoice:['Sell', 'Counter or kiosk bill'], pick:['Pick and pack', 'Sales orders ready to go'],
+  transfer:['Move stock', 'To another bin or warehouse'], count:['Count stock', 'Check bins against the books'], putaway:['Put away', 'From the receiving area into bins'],
+  sales_return:['Customer return', 'Goods coming back'], purchase_return:['Return to supplier', 'Damaged, expired or excess'],
+  adjustment_in:['Correct stock', 'Found more or less than the books'], refill:['Refill bins', 'Home bins running low'],
+  lookup:['Check stock', 'Scan an item: quantity in each bin']
+};
+const MAIN_TILES = {storekeeper:['grn', 'putaway', 'pick', 'transfer', 'count', 'lookup'], cashier:['sales_invoice', 'sales_return', 'lookup'],
+                    other:['grn', 'sales_invoice', 'pick', 'transfer', 'count', 'lookup']};
 function viewHome(){
   S.view = 'home'; S.doc = null;
   const t = S.tenants.find(x => x.id === S.tenant) || {};
   setBar(t.name || 'Warehouse', {wh:true}); showDock(false);
   const n = LS.get('wms.outbox', []).filter(o => o.tenant === S.tenant).length;
+  const wh = S.m.whs.find(w => w.id === S.wh) || {};
+  let main = (MAIN_TILES[S.role] || MAIN_TILES.other).slice();
+  if (!wh.receiving_location_id) main = main.filter(k => k !== 'putaway');      // no receiving area here: goods go straight into bins
+  const rest = Object.keys(TILES).filter(k => !main.includes(k));
+  const tile = (k, cls = '') => `<button class="tile ${cls}" data-go="${k}"><b>${esc(TILES[k][0])}</b><span>${esc(TILES[k][1])}</span></button>`;
+  const open = LS.get('wms.morejobs', false);
   $('#main').innerHTML = `
-    <div class="tiles">
-      <button class="tile" data-go="grn"><b>Receive goods</b><span>Supplier delivery into bins</span></button>
-      <button class="tile" data-go="sales_invoice"><b>Sell</b><span>Store or kiosk bill</span></button>
-      <button class="tile" data-go="transfer"><b>Move stock</b><span>To another bin or warehouse</span></button>
-      <button class="tile" data-go="adjustment_in"><b>Adjust stock</b><span>After a physical count</span></button>
-      <button class="tile" data-go="pick"><b>Pick and pack</b><span>Sales orders ready to go</span></button>
-      <button class="tile" data-go="count"><b>Count stock</b><span>Physical verification by bin</span></button>
-      <button class="tile" data-go="sales_return"><b>Customer return</b><span>Good or damaged goods back</span></button>
-      <button class="tile" data-go="purchase_return"><b>Return to supplier</b><span>Damaged, expired or excess</span></button>
-      <button class="tile" data-go="putaway"><b>Put away</b><span>From receiving bay into bins</span></button>
-      <button class="tile" data-go="refill"><b>Refill bins</b><span>Pick faces below minimum</span></button>
-      <button class="tile wide" data-go="lookup"><b>Check stock</b><span>Scan an item to see quantity by bin</span></button>
-      <button class="tile" data-go="outbox"><b>Waiting to send ${n ? `<span class="badge">${n}</span>` : ''}</b><span>Saved while offline</span></button>
-      <button class="tile" data-go="refresh"><b>Refresh items</b><span>Get new items and bins</span></button>
-    </div>
+    ${n ? `<button class="tile wide warn" data-go="outbox" style="width:100%;margin-bottom:10px"><b>Waiting to send <span class="badge">${n}</span></b><span>Saved while offline. Tap to send now.</span></button>` : ''}
+    <div class="tiles">${main.map(k => tile(k, main.length % 2 && k === main[main.length - 1] ? 'wide' : '')).join('')}</div>
+    <button class="morejobs" id="moreJobs" aria-expanded="${open}">${open ? 'Fewer jobs ▴' : `More jobs (${rest.length}) ▾`}</button>
+    <div class="tiles small" id="restTiles" ${open ? '' : 'hidden'}>${rest.map(k => tile(k)).join('')}</div>
     <p class="hint" style="text-align:center;margin-top:18px">${esc(S.user?.email)}, ${esc(S.role)}.
-      <button id="so" style="background:none;border:0;color:var(--muted);text-decoration:underline;padding:0">Sign out</button></p>`;
+      <button class="lnk" id="refreshM">Refresh items</button> · <button class="lnk" id="so">Sign out</button></p>`;
   document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
     const g = b.dataset.go;
     if (g === 'lookup') return viewLookup();
@@ -374,9 +421,10 @@ function viewHome(){
     if (g === 'count') return viewCounts();
     if (g === 'putaway') return viewPutaway();
     if (g === 'refill') return viewRefills();
-    if (g === 'refresh') return loadMasters().then(() => { toast(`${S.m.items.length} items loaded.`, 'ok'); viewHome(); });
     startDoc(g);
   });
+  $('#moreJobs').onclick = () => { LS.set('wms.morejobs', !open); viewHome(); };
+  $('#refreshM').onclick = () => loadMasters().then(() => { toast(`${S.m.items.length} items loaded.`, 'ok'); viewHome(); });
   $('#so').onclick = signOut;
 }
 
@@ -667,7 +715,7 @@ async function lookupAgainst(){
   if (S.doc !== d) return;
   if (!doc || doc.status !== 'posted'){
     d.against = null; beep(false);
-    toast(!doc ? `${t === 'grn' ? 'GRN' : 'Invoice'} ${no} was not found.` : `${no} is ${doc.status}, not posted.`, 'err');
+    toast(!doc ? `${t === 'grn' ? 'Goods received entry' : 'Invoice'} ${no} was not found.` : `${no} is ${doc.status}, not posted.`, 'err');
     return renderDoc();
   }
   const {data:ls} = await S.sb.from('document_lines').select('item_id,rate,discount_pct,unit_factor,qty').eq('document_id', doc.id);
@@ -789,9 +837,9 @@ function renderDoc(){
     <label for="pty">Supplier</label>
     <select id="pty"><option value="">Choose supplier</option>${parties.map(p => `<option value="${p.id}" ${p.id === d.party_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
     ${d.party_id && d.auto.party ? note('Supplier ' + esc(d.auto.party)) : d.auto.partyHint ? `<p class="hint">${esc(d.auto.partyHint)}</p>` : ''}
-    <label for="agn">Against GRN no. (optional)</label><input id="agn" value="${esc(d.against_no)}" placeholder="Type or scan">
+    <label for="agn">Goods received entry no. (optional)</label><input id="agn" value="${esc(d.against_no)}" placeholder="Type or scan">
     <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Damaged, expired, excess supply, …">
-    <p class="hint">This supplier's own stock goes back first. The rate comes from the GRN when you give its number.</p>`;
+    <p class="hint">This supplier's own stock goes back first. The rate comes from that goods received entry when you give its number.</p>`;
   if (d.type.startsWith('adjustment')) head = `
     <label for="rsn">Reason</label><input id="rsn" value="${esc(d.reason)}" placeholder="Breakage, found in store, …">
     <label for="adj">Count result</label>
@@ -959,7 +1007,7 @@ async function sendPayload(p){
   if (p.against_no && !p.header.against_doc_id){
     const agType = p.header.doc_type === 'purchase_return' ? 'grn' : 'sales_invoice';
     const {data} = await S.sb.from('documents').select('id').eq('tenant_id', S.tenant).eq('doc_type', agType).eq('doc_no', p.against_no.toUpperCase()).maybeSingle();
-    if (!data) throw new Error(`${agType === 'grn' ? 'GRN' : 'Invoice'} ${p.against_no} was not found. Check the number or leave it blank.`);
+    if (!data) throw new Error(`${agType === 'grn' ? 'Goods received entry' : 'Invoice'} ${p.against_no} was not found. Check the number or leave it blank.`);
     p.header.against_doc_id = data.id;
   }
   docNo = draftNo();

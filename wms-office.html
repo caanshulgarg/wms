@@ -65,7 +65,7 @@ nav a .sub{color:#8E9BBB;font-weight:400}
 .tabs a{padding:9px 14px 8px;white-space:nowrap;color:#4A5570;text-decoration:none;border-bottom:3px solid transparent;font-weight:500;font-size:14px}
 .tabs a:hover{color:var(--ink);background:#F2F4F8}
 .tabs a.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:700}
-.head .tools{order:1}.head>p{order:4;flex-basis:100%}
+.head .tools{order:1}.head>p{order:4;flex-basis:100%}.head .autostat{order:5}
 nav a{display:block;padding:7px 18px 7px 34px;color:#E7ECF7;text-decoration:none;border-left:4px solid transparent;font-size:14px}
 nav a:hover{background:var(--ink2)}
 nav a.on{background:var(--ink2);border-left-color:var(--hivis);color:#fff;font-weight:600}
@@ -143,6 +143,52 @@ td.neg{color:var(--stop)}
 .toast{position:fixed;right:18px;bottom:18px;z-index:80;max-width:420px;padding:12px 14px;border-radius:6px;background:var(--ink);color:#fff}
 .toast.err{background:var(--stop)}
 
+/* menus, forms */
+.popmenu{position:fixed;z-index:65;min-width:190px;max-width:320px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 34px rgba(22,33,58,.2);padding:4px}
+.popmenu button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:5px;padding:8px 12px;font-size:14px}
+.popmenu button:hover,.popmenu button:focus{background:var(--zebra)}.popmenu button.warn{color:var(--stop)}
+.act.ghost{border-color:var(--line);color:var(--muted)}td.acts{white-space:nowrap}
+.chipbar .colsbtn{margin-left:auto}
+.fpage{padding:0 22px 22px;max-width:900px}
+.fpage section{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 18px 16px;margin-bottom:12px}
+.fpage h3{font:700 18px/1 var(--cond);margin:12px 0 4px}
+.fpage label{display:block;font-size:13.5px;color:var(--muted);margin:10px 0 4px}
+.fpage input,.fpage select,.fpage textarea{width:100%;height:36px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff}
+.fpage textarea{height:72px;padding:8px}.fpage .full{grid-column:1/-1}.fpage .note{font-size:12.5px}
+.fpfoot{position:sticky;bottom:0;background:var(--concrete);padding:10px 0;display:flex;gap:12px;align-items:center}
+label.chkline{display:flex!important;gap:10px;align-items:flex-start;color:var(--ink)!important;font-size:14.5px!important;margin:12px 0 2px!important;cursor:pointer}
+label.chkline input{width:18px!important;height:18px!important;margin-top:1px;flex:none}
+label.chkline small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+@media (max-width:820px){.fpage{padding:0 10px 14px}.fpage .grid2{grid-template-columns:1fr}
+  .dash{padding:0 10px 14px}.lib{padding:0 10px 14px}.setup{padding:12px}
+  .setup li{grid-template-columns:28px 1fr}.setup .stepacts{grid-column:2;justify-content:flex-start}
+  .qa{grid-template-columns:1fr 1fr}.head .about{font-size:13.5px}}
+/* home */
+.head .ttl{flex:1;min-width:220px}.head .ttl h1{flex:none}
+.head .about{color:var(--muted);font-size:14px;margin-top:6px;max-width:760px}
+details.how{order:4;flex-basis:100%;font-size:13.5px;color:var(--muted)}details.how summary{cursor:pointer;color:var(--ink);font-weight:500;width:max-content}
+details.how[open]{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+nav .showall{display:block;margin:14px 14px 0;padding:10px 4px 0;border-top:1px solid #2E3F66;font-size:13px;color:#C9D3EA;cursor:pointer}
+nav .showall input{margin-right:6px;vertical-align:-2px}nav .showall span{display:block;color:#8E9BBB;font-size:12px;margin:2px 0 0 22px}
+.setup{grid-column:1/-1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+.setuphead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.setuphead h3{margin:0 0 4px;color:var(--ink)}.setuphead span{color:var(--muted);font-size:14px}
+.setup .bar{height:6px;background:#EEECE6;border-radius:3px;margin:12px 0 6px;overflow:hidden}.setup .bar i{display:block;height:100%;background:var(--go)}
+.setup ol{list-style:none;margin:0;padding:0}
+.setup li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #EEECE6}
+.setup li:last-child{border-bottom:0}.setup li b{display:block}.setup li span{color:var(--muted);font-size:13.5px}
+.setup .tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.setup li.done .tick{background:var(--go);border-color:var(--go)}.setup li.done b{color:var(--muted);font-weight:500}
+.setup .stepacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.setup .donelbl{color:var(--go);font-weight:600;font-size:13.5px}
+.qa{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.qabtn{text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-height:74px}
+.qabtn:hover{border-color:var(--ink)}.qabtn b{display:block;font-size:15.5px}.qabtn span{color:var(--muted);font-size:13px}
+.allclear{grid-column:1/-1;background:#EEF7F1;border:1px solid #CFE6D8;color:#1D6B3A;border-radius:8px;padding:14px 16px;font-weight:500}
+.lib{padding:0 22px 22px}.lib input{width:100%;max-width:520px;height:38px;border:1px solid var(--line);border-radius:6px;padding:0 12px;background:#fff;margin-bottom:6px}
+.lib h3{font:700 18px/1 var(--cond);color:var(--muted);margin:18px 0 8px}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.libcard{display:block;background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--ink);text-decoration:none}
+.libcard:hover{border-color:var(--ink)}.libcard b{display:block;margin-bottom:3px}.libcard span{color:var(--muted);font-size:13.5px}
+.libcard em{display:inline-block;margin-top:6px;font-style:normal;font-size:12px;background:#EEECE6;border-radius:9px;padding:1px 8px;color:var(--muted)}
 /* dashboard */
 .dash{padding:0 22px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .card2{background:#fff;border:1px solid var(--line);border-left:6px solid var(--ink);border-radius:6px;padding:14px;text-align:left;cursor:pointer}
@@ -234,8 +280,8 @@ function quickRange(v){
 }
 
 /* ---------- labels for codes ---------- */
-const DOC_LABEL = {opening:'Opening stock', grn:'Goods receipt', purchase_return:'Purchase return', sales_invoice:'Sales invoice',
-  sales_return:'Sales return', transfer:'Transfer', adjustment_in:'Adjustment (add)', adjustment_out:'Adjustment (remove)'};
+const DOC_LABEL = {opening:'Opening stock', grn:'Goods received', purchase_return:'Return to supplier', sales_invoice:'Sales invoice',
+  sales_return:'Customer return', transfer:'Transfer', adjustment_in:'Stock correction (+)', adjustment_out:'Stock correction (−)'};
 const MSME_LABEL = {overdue:'Overdue', due_within_7_days:'Due in 7 days', ok:'Within time', paid_late:'Paid late', paid_on_time:'Paid on time'};
 const TABLE_LABEL = {items:'Items', item_gst_rates:'GST rates', item_barcodes:'Barcodes', parties:'Parties', warehouses:'Warehouses',
   locations:'Bins', documents:'Documents', document_lines:'Document lines', company_settings:'Company settings',
@@ -261,8 +307,10 @@ const gstCols = [M('taxable_value','Taxable value'), M('igst','IGST'), M('cgst',
    src: view / table, rpc: function with params, range: server-side date
    column (with from / to in the toolbar), prep: add display columns   */
 const REPORTS = [
-  {group:'Home', id:'dashboard', title:'Dashboard', custom:true, cols:[], sort:['none','asc']},
+  {group:'Home', id:'dashboard', title:'Home', custom:'home', cols:[], sort:['none','asc']},
+  {group:'Home', id:'library', title:'All reports', custom:'library', cols:[], sort:['none','asc']},
   {group:'Stock', id:'bins', title:'Stock by bin', src:'v_stock_by_location', sort:['item_name','asc'],
+   tools:[{label:'Import opening stock', fn:() => importForm('opening')}],
    cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), N('qty_on_hand','Qty', {sum:true}), M('stock_value','Value')]},
   {group:'Stock', id:'lots', title:'Stock by supplier invoice', src:'v_lots', sort:['inward_date','desc'],
    where:q => S.lotsAll ? q : q.gt('qty_remaining', 0),
@@ -273,15 +321,15 @@ const REPORTS = [
    actions:r => [{label:'Where it went', fn:() => lotTrail({lot_id:r.lot_id, title:r.lot_code + ', ' + r.item_name})},
                  r.source_doc_id && {label:'Open supplier invoice', fn:() => openInvoiceFile(null, r.source_doc_id)}],
    cols:[T('lot_code','Lot'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), T('supplier','Supplier'),
-         T('supplier_invoice_no','Supplier invoice'), D('supplier_invoice_date','Invoice date'), T('source_doc_no','GRN / source'), C('from_label','Came as'),
+         T('supplier_invoice_no','Supplier invoice'), D('supplier_invoice_date','Invoice date'), T('source_doc_no','Received on entry'), C('from_label','Came as'),
          C('check_label','Invoice check'), T('batch_no','Batch'), D('expiry_date','Expiry'), D('inward_date','Received on'),
          N('qty_in','Received', {sum:true}), N('qty_remaining','In stock', {sum:true}), M('purchase_cost','Purchase cost'), M('invoice_rate','Invoice rate'),
          M('current_cost','Current cost'), M('stock_value','Stock value')]},
-  {group:'Stock', id:'summary', title:'Stock summary', rpc:'stock_summary', params:'period', sort:['item_name','asc'],
+  {group:'Stock', id:'summary', title:'Opening to closing stock', rpc:'stock_summary', params:'period', sort:['item_name','asc'],
    note:'Opening, inward, outward and closing for the period. Value is at cost (FIFO).',
    cols:[T('item_name','Item'), T('sku','SKU'), C('hsn_code','HSN'), C('warehouse','Warehouse'), N('opening','Opening', {sum:true}),
          N('inward','Inward', {sum:true}), N('outward','Outward', {sum:true}), N('closing','Closing', {sum:true}), M('closing_value','Closing value')]},
-  {group:'Stock', id:'ledger', title:'Item ledger', src:'v_item_ledger', range:'movement_date', sort:['movement_date','asc'],
+  {group:'Stock', id:'ledger', title:'Item history', src:'v_item_ledger', range:'movement_date', sort:['movement_date','asc'],
    note:'Every stock movement with the running balance for that item and warehouse.',
    prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type}),
    cols:[D('movement_date','Date'), C('doc_label','Type'), T('doc_no','Document'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'),
@@ -294,7 +342,7 @@ const REPORTS = [
    prep:r => ({...r, warehouse:whOf(r.warehouse_id), bin:binOf(r.location_id), vendor:partyOf(r.vendor_id)}),
    cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), C('vendor','Vendor'), T('batch_no','Batch'),
          D('expiry_date','Expiry'), D('inward_date','Received'), N('age_days','Age (days)'), C('age_bucket','Age group'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
-  {group:'Stock', id:'vendorstock', title:'Vendor-wise stock', src:'v_vendor_stock', sort:['vendor','asc'],
+  {group:'Stock', id:'vendorstock', title:'Stock by supplier', src:'v_vendor_stock', sort:['vendor','asc'],
    prep:r => ({...r, warehouse:whOf(r.warehouse_id), vendor:r.vendor || 'No vendor'}),
    cols:[C('vendor','Vendor'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
   {group:'Stock', id:'reorder', title:'Reorder alerts', src:'v_reorder_alerts', sort:['item_name','asc'],
@@ -304,7 +352,7 @@ const REPORTS = [
    cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), N('qty_on_hand','Qty', {sum:true}), M('stock_value','Value'),
          D('last_in_date','Last received'), D('last_out_date','Last sold'), N('days_without_sale','Days without sale'), C('movement','Movement')]},
 
-  {group:'Documents', id:'docs', title:'All documents', src:'v_documents', range:'doc_date', sort:['doc_date','desc'],
+  {group:'Documents', id:'docs', title:'All entries', src:'v_documents', range:'doc_date', sort:['doc_date','desc'],
    prep:r => ({...r, doc_label:DOC_LABEL[r.doc_type] || r.doc_type, created_by_name:userOf(r.created_by), status_label:cap(r.status),
                check_label:{matched:'Matches', differences:'Differences'}[r.invoice_check_status] || (r.doc_type === 'grn' && S.lk.settings.invoice_check_on !== false ? 'Not checked' : '')}),
    tools:[{label:'E-way JSON for shown rows', fn:() => gstBulk('ewaybill')}, {label:'E-invoice JSON for shown rows', fn:() => gstBulk('einvoice')}],
@@ -318,7 +366,7 @@ const REPORTS = [
      r.invoice_check_status && {label:'Invoice check result', fn:() => showSavedCheck(r)},
      r.status === 'posted' && ['grn','opening','adjustment_in'].includes(r.doc_type) && {label:'Where its stock went', fn:() => lotTrail({source_doc_id:r.id, title:r.doc_no + (r.party_doc_no ? ', bill ' + r.party_doc_no : '')})},
      r.status === 'draft' && {label:'Post', fn:() => postDoc(r.id, r.doc_no)},
-     r.status === 'draft' && {label:'Serial numbers', fn:() => serialsForm(r)},
+     r.status === 'draft' && inUse('serials') && {label:'Serial numbers', fn:() => serialsForm(r)},
      r.status === 'posted' && ['grn','purchase_return'].includes(r.doc_type) && {label:r.doc_type === 'grn' ? 'Make supplier bill' : 'Make debit note', fn:() => makeBill(r)},
      r.status === 'posted' && {label:'Cancel', warn:true, fn:() => cancelDoc(r)}],
    cols:[D('doc_date','Date'), C('doc_label','Type'), T('doc_no','Number'), C('status_label','Status'), T('order_no','Order'), C('warehouse','Warehouse'), C('to_warehouse','To warehouse'),
@@ -380,7 +428,7 @@ const REPORTS = [
          M('outward_sgst','SGST'), M('outward_cess','Cess'), M('outward_nil_exempt_value','Nil / exempt'), M('inter_state_unregistered_value','Inter-state to unregistered'),
          M('itc_igst','ITC IGST'), M('itc_cgst','ITC CGST'), M('itc_sgst','ITC SGST'), M('itc_cess','ITC cess')]},
 
-  {group:'Controls', id:'audit', title:'Employee log', src:'audit_log', range:'at', sort:['at','desc'],
+  {group:'Controls', id:'audit', title:'Who changed what', src:'audit_log', range:'at', sort:['at','desc'],
    note:'Who changed what. Owners and admins only.',
    prep:r => ({...r, who:userOf(r.user_id), what:TABLE_LABEL[r.table_name] || r.table_name, action_label:ACTION_LABEL[r.action] || r.action,
                ref:(r.new_data || r.old_data || {}).doc_no || (r.new_data || r.old_data || {}).sku || (r.new_data || r.old_data || {}).bill_no || (r.new_data || r.old_data || {}).name || '',
@@ -426,11 +474,11 @@ const REPORTS = [
          M('not_due','Not due'), M('overdue_1_30','1–30 days'), M('overdue_31_60','31–60 days'), M('overdue_61_90','61–90 days'),
          M('overdue_90_plus','Over 90 days'), M('total_outstanding','Outstanding'), M('unadjusted_credits','Advances and credit notes'), M('net_receivable','Net receivable')]},
 
-  {group:'Stock', id:'putaway', title:'Putaway pending', src:'v_putaway_pending', sort:['since','asc'],
+  {group:'Stock', id:'putaway', title:'To put away', src:'v_putaway_pending', sort:['since','asc'],
    note:'Stock waiting in the receiving bay. Staff put it away with the phone app (Put away), which suggests the bin.',
    cols:[C('warehouse','Warehouse'), T('item_name','Item'), T('sku','SKU'), T('batch_no','Batch'), D('expiry_date','Expiry'), N('qty','Qty', {sum:true}),
          D('since','Received'), C('suggested_bin','Suggested bin')]},
-  {group:'Stock', id:'refills', title:'Bin refills', src:'v_bin_refills', sort:['to_bin','asc'],
+  {group:'Stock', id:'refills', title:'Bins to refill', src:'v_bin_refills', sort:['to_bin','asc'],
    note:'Home bins at or below their minimum. Refill them from the phone app (Refill bins) or here.',
    actions:r => [r.from_location_id && {label:'Move now', fn:() => officeMove(r.warehouse_id, r.item_id, r.from_location_id, r.to_location_id, Math.min(num(r.refill_qty), num(r.from_qty)), 'Refill ' + r.to_bin)}],
    cols:[C('warehouse','Warehouse'), T('item_name','Item'), T('sku','SKU'), C('to_bin','Home bin'), N('bin_qty','In bin'), N('min_qty','Minimum'), N('max_qty','Maximum'),
@@ -464,7 +512,7 @@ const REPORTS = [
    prep:r => ({...r, status_label:cap(r.status)}),
    cols:[T('count_no','Count'), C('status_label','Status'), C('warehouse','Warehouse'), C('bin','Bin'), T('item_name','Item'), T('sku','SKU'),
          N('system_qty','Book qty', {sum:true}), N('counted_qty','Counted', {sum:true}), N('variance','Difference', {sum:true}), M('variance_value','Difference value')]},
-  {group:'Stock checks', id:'cycledue', title:'Cycle count plan', src:'v_cycle_count_due', sort:['due_on','asc'],
+  {group:'Stock checks', id:'cycledue', title:'Counting plan', src:'v_cycle_count_due', sort:['due_on','asc'],
    note:'ABC classes from the value issued in the last 90 days: A = first 80%, B = next 15%, C = the rest. Each class is counted every so many days.',
    tools:[{label:'Start today\'s cycle count', fn:() => cycleForm()}, {label:'Plan settings', fn:() => cyclePlanForm()}],
    prep:r => ({...r, due_label:r.days_overdue > 0 ? `${r.days_overdue} days overdue` : r.days_overdue === 0 ? 'Due today' : `In ${-r.days_overdue} days`}),
@@ -479,7 +527,7 @@ const REPORTS = [
    actions:r => [{label:'Return this lot', fn:() => supplierReturn([r])}],
    cols:[C('supplier','Supplier'), C('condition','Condition'), T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), T('batch_no','Batch'),
          D('expiry_date','Expiry'), D('inward_date','Received'), N('qty','Qty', {sum:true}), M('value','Value at cost')]},
-  {group:'Stock checks', id:'quarantine', title:'Quarantine stock', src:'v_quarantine_stock', sort:['inward_date','desc'],
+  {group:'Stock checks', id:'quarantine', title:'Damaged or expired stock', src:'v_quarantine_stock', sort:['inward_date','desc'],
    prep:r => ({...r, came_label:DOC_LABEL[r.came_from] || r.came_from}),
    cols:[T('item_name','Item'), T('sku','SKU'), C('warehouse','Warehouse'), C('bin','Bin'), C('vendor','Vendor'), T('batch_no','Batch'), D('expiry_date','Expiry'),
          D('inward_date','Received'), C('came_label','Came from'), T('doc_no','Document'), T('reason','Reason'), N('qty','Qty', {sum:true}), M('stock_value','Value')]},
@@ -496,7 +544,7 @@ const REPORTS = [
    cols:[T('name','Item'), T('sku','SKU'), C('hsn_code','HSN'), C('uom','Unit'), N('current_gst_rate','GST %'), D('gst_from','GST from'), N('mrp','MRP'),
          N('std_purchase_price','Purchase price'), N('default_discount_pct','Discount %'), T('barcodes','Barcodes'), T('units','Other units'),
          Y('track_batch','Batch'), Y('track_expiry','Expiry'), Y('track_serial','Serial'), C('kind','Kind'), C('neg','Negative stock'), Y('is_active','Active')]},
-  {group:'Masters', id:'homebins', title:'Home bins (min / max)', src:'v_item_bins', sort:['bin','asc'],
+  {group:'Masters', id:'homebins', title:'Home bins', src:'v_item_bins', sort:['bin','asc'],
    note:'The bin where an item normally sits. Putaway suggests it first, and a refill is raised when it falls to the minimum.',
    tools:[{label:'Add home bin', fn:() => editForm('item_bins')}],
    actions:r => [{label:'Edit', fn:() => editForm('item_bins', r)}, {label:'Remove', warn:true, fn:() => removeRow('item_bins', r)}],
@@ -561,12 +609,12 @@ const REPORTS = [
    cols:[T('name','Scheme'), T('item_name','Item'), T('sku','SKU'), N('buy_qty','Buy'), N('free_qty','Free'), T('free_sku','Free item'), C('party','Only for'),
          D('valid_from','From'), D('valid_to','To'), Y('is_active','Active')]},
 
-  {group:'Settings', id:'profile', title:'Company profile', src:'tenants', tenantCol:'id', sort:['name','asc'],
+  {group:'Settings', id:'profile', form:'tenants', title:'Company profile', src:'tenants', tenantCol:'id', sort:['name','asc'],
    note:'Printed on invoices and used for e-invoice and e-way bills.',
    actions:r => [{label:'Edit', fn:() => editForm('tenants', r)}],
    cols:[T('name','Company'), T('legal_name','Legal name'), T('gstin','GSTIN'), T('pan','PAN'), T('address1','Address'), T('city','City'), T('pincode','PIN'),
          T('phone','Phone'), T('email','Email'), T('bank_account','Bank account'), Y('einvoice_applicable','E-invoice applies')]},
-  {group:'Tally', id:'tallysync', title:'Tally sync', src:'v_tally_queue', sort:['doc_date','asc'],
+  {group:'Tally', id:'tallysync', title:'To send to Tally', src:'v_tally_queue', sort:['doc_date','asc'],
    note:'Entries not yet in Tally. Send them through the Tally Bridge on the Tally computer, or download an XML file to import in Tally.',
    tools:[{label:'Automatic sync…', fn:() => autoSettings()}, {label:'Bring items and parties from Tally', fn:() => pullPreview()},
           {label:'Connect Tally Bridge', fn:() => bridgeConnect()}, {label:'Send shown rows to Tally', fn:() => tallySend()}, {label:'Download XML for shown rows', fn:() => tallyExport()}],
@@ -580,7 +628,7 @@ const REPORTS = [
    prep:r => ({...r, who:userOf(r.created_by)}),
    cols:[{...D('created_at','When'), type:'time'}, C('entity','Entry'), C('action','Action'), C('side','Side'), C('status','Result'), T('voucher_no','Voucher no.'),
          C('tally_company','Tally company'), T('message','Message'), C('who','By')]},
-  {group:'Tally', id:'tallysettings', title:'Tally ledgers', src:'tally_settings', sort:['tenant_id','asc'],
+  {group:'Tally', id:'tallysettings', form:'tally_settings', title:'Tally ledgers', src:'tally_settings', sort:['tenant_id','asc'],
    note:'Ledger and voucher type names used when posting to Tally. {rate} is replaced by the GST rate, e.g. Sales @ 18%.',
    actions:r => [{label:'Edit', fn:() => editForm('tally_settings', r)}],
    cols:[D('sync_from','Send entries from'), T('sales_ledger','Sales ledger'), T('purchase_ledger','Purchase ledger'), T('walkin_ledger','Counter sales party'),
@@ -601,19 +649,19 @@ const REPORTS = [
                  r.status === 'approved' && r.order_id && r.ref_status === 'draft' && {label:'Confirm now', fn:() => confirmOrder({id:r.order_id, order_no:r.ref_no, order_type:'purchase'})}],
    cols:[C('status_label','Status'), C('kind_label','Rule'), C('ref_label','Entry'), T('ref_no','Number'), D('ref_date','Date'), C('party','Party'), C('wh','Warehouse'),
          T('summary','What needs approval'), T('request_note','Note'), C('by','Asked by'), {...D('requested_at','Asked on'), type:'time'}, C('dec','Decided by'), T('decision_note','Decision note')]},
-  {group:'Settings', id:'approvalrules', title:'Approval rules', src:'approval_rules', sort:['tenant_id','asc'],
+  {group:'Settings', id:'approvalrules', form:'approval_rules', title:'Approval rules', src:'approval_rules', sort:['tenant_id','asc'],
    note:'Leave a limit blank to switch that rule off. Approvers cannot approve their own requests, except the owner.',
    actions:r => [{label:'Edit', fn:() => editForm('approval_rules', r)}],
    prep:r => ({...r, roles:(r.approver_roles || []).map(x => ROLE_LABEL[x] || x).join(', ')}),
    cols:[N('discount_above_pct','Discount above %'), Y('below_cost_needs_approval','Below cost'), Y('credit_limit_needs_approval','Over credit limit'),
          M('adjustment_above_value','Adjustment above Rs'), M('purchase_order_above_value','Purchase order above Rs'), Y('cancel_needs_approval','Cancelling'), C('roles','Approvers')]},
-  {group:'Settings', id:'settings', title:'Company settings', src:'company_settings', sort:['tenant_id','asc'],
+  {group:'Settings', id:'settings', form:'company_settings', title:'Company settings', src:'company_settings', sort:['tenant_id','asc'],
    actions:r => [{label:'Edit', fn:() => editForm('company_settings', r)}],
    prep:r => ({...r, neg:NEG_LABEL[r.negative_stock_mode], cost_label:r.costing_method === 'weighted_avg' ? 'Weighted average' : 'FIFO',
                reader_label:{free_first:'Free first', free_only:'Free only', claude_first:'Claude first'}[r.invoice_reader] || 'Free first'}),
    cols:[D('books_lock_date','Books locked up to'), C('cost_label','Stock valuation'), C('neg','Negative stock'), N('near_expiry_days','Near-expiry days'), N('po_excess_pct','Allowed excess over PO %'),
          Y('warn_below_cost','Warn below cost'), Y('invoice_check_on','Invoice check'), Y('blind_receiving','Blind receiving'), Y('po_three_way','Three-way match'), Y('einvoice_qr_on','E-invoice QR'), C('reader_label','Invoice reader'),
-         Y('grn_needs_invoice_match','GRN needs matching invoice'), C('timezone','Time zone')]},
+         Y('grn_needs_invoice_match','Post only after invoice matches'), C('timezone','Time zone')]},
   {group:'Settings', id:'backdate', title:'Back-date limits', src:'role_backdate_limits', sort:['role','asc'],
    note:'How many days back each role can post entries. A role not listed has no limit (the lock date still applies).',
    tools:[{label:'Add limit', fn:() => editForm('role_backdate_limits')}],
@@ -621,13 +669,153 @@ const REPORTS = [
    actions:r => [{label:'Edit', fn:() => editForm('role_backdate_limits', r)}, {label:'Remove', warn:true, fn:() => removeRow('role_backdate_limits', r)}],
    cols:[C('role_label','Role'), N('max_days_back','Days back allowed')]},
   {group:'Settings', id:'team', title:'Team', rpc:'team_members', rpcArgs:() => ({p_tenant:S.tenant}), sort:['email','asc'],
-   note:'Staff first create an account in the app with their email. Then add them here.',
-   tools:[{label:'Add team member', fn:() => teamForm()}],
+   note:'Add people with Invite someone: they get a link, choose a password and join with the role you pick.',
+   tools:[{label:'Invite someone', fn:() => inviteForm()}],
    prep:r => ({...r, role_label:ROLE_LABEL[r.role], wh_label:['owner','admin'].includes(r.role) ? 'All' : (S.lk.uwh[r.user_id] || []).map(whOf).join(', ') || 'All'}),
    actions:r => [{label:'Change role', fn:() => teamForm(r)}, !['owner','admin'].includes(r.role) && {label:'Warehouses', fn:() => whAccessForm(r)},
                  {label:r.is_active ? 'Deactivate' : 'Activate', warn:r.is_active, fn:() => teamActive(r)}],
-   cols:[T('email','Email'), C('role_label','Role'), C('wh_label','Warehouses'), Y('is_active','Active')]}
+   cols:[T('email','Email'), C('role_label','Role'), C('wh_label','Warehouses'), Y('is_active','Active')]},
+  {group:'Settings', id:'invites', title:'Invitations', src:'team_invites', sort:['created_at','desc'],
+   note:'Nothing is emailed by the system: you share the link yourself (WhatsApp, email or SMS). Anyone who has the link can join as that role, so send it only to that person. It works once, for 14 days.',
+   tools:[{label:'Invite someone', fn:() => inviteForm()}],
+   prep:r => ({...r, role_label:ROLE_LABEL[r.role], by:userOf(r.created_by),
+               status_label:r.status === 'pending' ? (new Date(r.expires_at) < new Date() ? 'Expired' : 'Waiting to join') : {accepted:'Joined', cancelled:'Cancelled'}[r.status]}),
+   actions:r => [r.status_label === 'Waiting to join' && {label:'Share link', fn:() => shareInvite(r)},
+                 r.status === 'pending' && {label:'Cancel', warn:true, fn:() => cancelInvite(r)}],
+   cols:[T('email','Email'), C('role_label','Role'), C('status_label','Status'), {...D('created_at','Sent'), type:'time'}, C('by','Sent by'), D('expires_at','Link works till')]}
 ];
+// Sales and purchase orders as separate screens (the combined screens stay in All reports)
+(() => {
+  const o = REPORTS.find(r => r.id === 'orders'), ol = REPORTS.find(r => r.id === 'orderlines'), drop = (cols, ks) => cols.filter(c => !ks.includes(c.k));
+  REPORTS.push(
+    {...o, id:'sorders', title:'Sales orders', tools:[o.tools[1]], where:q => q.eq('order_type', 'sales'), cols:drop(o.cols, ['type_label'])},
+    {...o, id:'porders', title:'Purchase orders', tools:[o.tools[0]], where:q => q.eq('order_type', 'purchase'), cols:drop(o.cols, ['type_label', 'sales_point', 'backorder_qty'])},
+    {...ol, id:'sorderlines', title:'Items customers are waiting for', where:q => q.eq('order_type', 'sales'), cols:drop(ol.cols, ['type_label'])},
+    {...ol, id:'porderlines', title:'Items still to arrive', where:q => q.eq('order_type', 'purchase'), cols:drop(ol.cols, ['type_label', 'reserved_qty', 'backorder_qty'])});
+})();
+
+/* ---------- the columns shown first on wide screens ("Show all columns" brings the rest; Excel export always has all) ---------- */
+const MAIN = {
+  docs:['doc_date','doc_label','doc_no','status_label','party','warehouse','doc_value','check_label'],
+  lots:['lot_code','item_name','warehouse','supplier','supplier_invoice_no','batch_no','expiry_date','qty_remaining','purchase_cost','stock_value'],
+  ledger:['movement_date','doc_label','doc_no','item_name','warehouse','party','qty_in','qty_out','running_balance','value'],
+  summary:['item_name','sku','warehouse','opening','inward','outward','closing','closing_value'],
+  ageing:['item_name','warehouse','batch_no','inward_date','age_days','age_bucket','qty','stock_value'],
+  bills:['bill_date','bill_no','vendor','due_date','msme_label','net_payable','outstanding','days_overdue'],
+  vendorageing:['vendor','not_due','overdue_1_30','overdue_31_60','overdue_61_90','overdue_90_plus','net_payable'],
+  msmedis:['vendor','bill_no','bill_date','msme_due_date','paid_by_cutoff','disallowable_expense','status_label'],
+  eway:['doc_date','doc_label','doc_no','to_party_or_warehouse','doc_value','eway_label','eway_bill_no','vehicle_no'],
+  audit:['at','who','action_label','what','ref','changes'],
+  orders:['order_date','type_label','order_no','party','progress','ordered_qty','pending_qty','order_value','expected_date'],
+  sorders:['order_date','order_no','party','progress','ordered_qty','pending_qty','backorder_qty','order_value','expected_date'],
+  porders:['order_date','order_no','party','progress','ordered_qty','pending_qty','order_value','expected_date'],
+  orderlines:['order_date','type_label','order_no','party','item_name','pending_qty','backorder_qty','expected_date'],
+  sorderlines:['order_date','order_no','party','item_name','ordered_qty','done_qty','pending_qty','backorder_qty','expected_date'],
+  porderlines:['order_date','order_no','party','item_name','ordered_qty','done_qty','pending_qty','expected_date'],
+  picks:['created_at','pick_no','status_label','order_no','customer','qty_to_pick','qty_picked','qty_packed','invoice_no'],
+  custinv:['doc_date','doc_no','customer','due_date','invoice_value','outstanding','days_overdue'],
+  custageing:['customer','not_due','overdue_1_30','overdue_31_60','overdue_61_90','overdue_90_plus','net_receivable'],
+  refills:['to_bin','item_name','bin_qty','min_qty','refill_qty','from_bin','from_qty'],
+  serials:['serial_no','item_name','status_label','warehouse','party','last_document','last_date'],
+  serialhist:['serial_no','item_name','doc_date','type_label','doc_no','party'],
+  counts:['count_no','status_label','warehouse','started_at','started_by_name','lines','lines_with_difference','approved_by_name'],
+  countlines:['count_no','bin','item_name','system_qty','counted_qty','variance','variance_value'],
+  cycledue:['warehouse','item_name','abc_class','on_hand','last_counted','due_on','due_label'],
+  expiry:['expiry_status','item_name','warehouse','batch_no','expiry_date','days_to_expiry','qty','stock_value'],
+  returnable:['supplier','condition','item_name','warehouse','batch_no','expiry_date','qty','value'],
+  quarantine:['item_name','warehouse','bin','batch_no','expiry_date','reason','qty','stock_value'],
+  items:['name','sku','hsn_code','uom','current_gst_rate','mrp','std_purchase_price','barcodes','is_active'],
+  parties:['name','type_label','gstin','state','is_msme','credit_days','is_active'],
+  warehouses:['code','name','gstin','state','rbin','is_active'],
+  schemes:['name','item_name','buy_qty','free_qty','free_sku','valid_from','valid_to','is_active'],
+  approvals:['status_label','kind_label','ref_label','ref_no','party','summary','by','requested_at'],
+  tallysync:['doc_date','type_label','doc_no','party','company','act_label','amount','last_error'],
+  tallylog:['created_at','entity','action','status','voucher_no','message']
+};
+const allColsOn = rep => LS.get('wms.cols.' + rep.id, false);
+function shownCols(rep){
+  const m = MAIN[rep.id];
+  const oneWh = S.lk.whs.length === 1 && !allColsOn(rep), whCol = c => oneWh && ['warehouse', 'to_warehouse', 'from_warehouse'].includes(c.k) && !isOn(S.f[c.k]);
+  if (!m || allColsOn(rep)) return rep.cols.filter(c => !whCol(c));
+  return rep.cols.filter(c => !whCol(c) && (m.includes(c.k) || isOn(S.f[c.k]) || (S.sort && S.sort.k === c.k)));
+}
+
+/* ---------- one line on what each screen is for (shown under the title and in All reports) ---------- */
+const ABOUT = {
+  dashboard:'What needs doing today, and shortcuts to the everyday jobs.',
+  library:'Every screen in one place, with what each one is for.',
+  bins:'How much of each item is in each bin, and its value at cost.',
+  lots:'Stock traced back to the supplier bill it came on, with the cost on that bill.',
+  summary:'Opening stock, what came in, what went out and closing stock for a period.',
+  ledger:'Every movement of an item with the running balance, like a bank statement.',
+  available:'What can still be sold: stock in hand less what is held for confirmed orders.',
+  ageing:'How long stock has been lying, lot by lot.',
+  vendorstock:'Stock in hand grouped by the supplier it came from.',
+  reorder:'Items at or below their minimum level, with the quantity to order.',
+  slow:'Items that have not sold for a long time.',
+  docs:'Every entry: goods received, sales, returns, transfers and stock corrections. Print, post or cancel from here.',
+  bills:'Supplier bills with what is paid and what is still due.',
+  vendorageing:'How much each supplier is owed, by how overdue it is.',
+  msme:'Bills from MSME suppliers and the date each must be paid by.',
+  msmedis:'MSME bills not paid in time, which cannot be claimed as an expense this year (Section 43B(h)).',
+  b2b:'GSTR-1: invoices to registered customers.',
+  b2cl:'GSTR-1: large invoices to unregistered customers in other states.',
+  b2cs:'GSTR-1: other sales to unregistered customers, by state and rate.',
+  cdnr:'GSTR-1: credit notes to registered customers.',
+  cdnur:'GSTR-1: credit notes to unregistered customers.',
+  hsn:'GSTR-1: quantity and value by HSN code.',
+  docsissued:'GSTR-1: invoice and note numbers used.',
+  gstr3b:'GSTR-3B figures worked out from your entries.',
+  eway:'Movements that need an e-way bill, and whether it has been made.',
+  audit:'Who created, changed or deleted what, and when.',
+  orders:'All sales and purchase orders together.',
+  orderlines:'Items still pending on all open orders.',
+  sorders:'Customer orders. Confirming one holds the stock; then pick, pack and bill.',
+  sorderlines:'Items customers have ordered and are still waiting for.',
+  porders:'Orders placed on suppliers, and what is still to arrive.',
+  porderlines:'Items ordered from suppliers that have not arrived yet.',
+  picks:'Orders being picked and packed in the warehouse.',
+  custinv:'Customer invoices with what is received and what is still due.',
+  custageing:'How much each customer owes, by how overdue it is.',
+  putaway:'Goods in the receiving area that still need to go into bins.',
+  refills:'Home bins running low, and where to refill them from.',
+  serials:'Where each serial-numbered unit is now.',
+  serialhist:'Every movement of each serial number.',
+  variants:'Stock of each size or colour of an item.',
+  kits:'Kits and bundles, and how many can be made from stock.',
+  counts:'Stock counts done on the phone, waiting for approval or done.',
+  countlines:'What each count found against what the books say.',
+  cycledue:'Which items are due for counting, so everything gets counted regularly.',
+  expiry:'Batches that have expired or will expire soon.',
+  returnable:'Stock by the supplier it came from, ready to send back.',
+  quarantine:'Damaged or expired stock kept aside. It is never sold.',
+  items:'Your products: code, HSN, GST rate, prices and what is tracked.',
+  homebins:'The bin each item normally sits in, and when to refill it.',
+  kitparts:'What goes into each kit or bundle.',
+  gstrates:'GST rate of each item, with the date each rate applies from.',
+  barcodes:'Barcodes that point to each item, including carton barcodes.',
+  units:'Extra units such as BOX or CTN, and how many pieces each holds.',
+  reorderlevels:'Minimum stock for each item, and how much to reorder.',
+  parties:'Customers and suppliers, with GSTIN, MSME status and credit terms.',
+  warehouses:'Your warehouses and godowns.',
+  binmaster:'Bins, racks and shelves where stock is kept.',
+  counters:'Shop counters and kiosks that sell from a warehouse.',
+  pricelists:'Separate rate lists, for example for dealers and retailers.',
+  prices:'Rates in each price list, with quantity slabs.',
+  schemes:'Buy-some-get-some-free offers.',
+  profile:'Company details printed on invoices and used for e-invoice and e-way bills.',
+  settings:'How stock is valued, checks on goods received, and other company rules.',
+  approvalrules:'Which entries need approval, and who approves them.',
+  backdate:'How many days back each role can make entries.',
+  team:'Who can use the system and what each person can do.',
+  invites:'Invitations to join the team, and whether they have been used.',
+  approvals:'Entries waiting for an owner or manager to approve.',
+  tallysync:'Entries waiting to go to Tally.',
+  tallylog:'What was sent to Tally and what Tally replied.',
+  tallysettings:'The Tally ledger and voucher type names used for each entry.',
+  tallycompanies:'Which Tally company each GSTIN posts to.'
+};
+
 
 /* ---------- state ---------- */
 const S = {
@@ -671,9 +859,11 @@ function viewSetup(){
     if (!/^https:\/\//.test(url) || key.length < 20) return toast('Enter the project URL and anon key.', 'err');
     LS.set('wms.cfg', {url, key}); boot(); };
 }
-function viewLogin(){
+function viewLogin(email){
+  const joining = LS.get('wms.join', null);
   $('#root').innerHTML = `<div class="card"><h1>Sign in</h1>
-    <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+    ${joining ? '<p class="note">Signing in also accepts your invitation.</p>' : ''}
+    <label for="em">Email</label><input id="em" type="email" autocomplete="username" value="${esc(email || '')}">
     <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
     <button class="btn primary" id="go">Sign in</button>
     <p class="note">New here? <button class="linkbtn" id="su">Create an account</button> with this email and password.<br>
@@ -694,13 +884,44 @@ async function boot(){
   const c = wmsCfg();
   if (!window.supabase) return toast('Could not load the Supabase library. Check the internet connection and reload.', 'err');
   S.sb = window.supabase.createClient(c.url, c.key);
+  const jm = location.hash.match(/^#join=([a-f0-9]{32,})$/);          // invitation link
+  if (jm){ LS.set('wms.join', jm[1]); history.replaceState(null, '', location.pathname + location.search); }
   const {data} = await S.sb.auth.getSession();
-  if (!data.session) return viewLogin();
+  if (!data.session) return LS.get('wms.join', null) ? viewJoin() : viewLogin();
   afterLogin();
+}
+async function viewJoin(){
+  const {data, error} = await S.sb.rpc('invite_info', {p_token:LS.get('wms.join', '')});
+  const inv = (data || [])[0];
+  if (error || !inv || inv.status !== 'pending'){
+    LS.del('wms.join'); viewLogin();
+    return toast(!inv ? 'That invitation link is not valid. Ask for a new one.' : inv.status === 'accepted' ? 'This invitation has already been used. Sign in.'
+                 : `This invitation has ${inv.status === 'expired' ? 'expired' : 'been cancelled'}. Ask for a new one.`, 'err');
+  }
+  $('#root').innerHTML = `<div class="card"><h1>Join ${esc(inv.company)}</h1>
+    <p class="note">You are invited as <b>${esc(ROLE_LABEL[inv.role] || inv.role)}</b>. Choose a password to finish.</p>
+    <label for="em">Email</label><input id="em" type="email" value="${esc(inv.email)}" readonly>
+    <label for="pw">Choose a password (8 or more characters)</label><input id="pw" type="password" autocomplete="new-password">
+    <button class="btn primary" id="go">Create account and join</button>
+    <p class="note">Already have an account with this email? <button class="linkbtn" id="si">Sign in instead</button></p></div>`;
+  const go = async () => {
+    const password = $('#pw').value; if (password.length < 8) return toast('Use a password of at least 8 characters.', 'err');
+    const {data:d, error:e} = await S.sb.auth.signUp({email:inv.email, password});
+    if (e){ if (/already|registered|exists/i.test(e.message)){ toast('This email already has an account. Sign in with its password.', 'err'); return viewLogin(inv.email); } return toast(e.message, 'err'); }
+    if (d.session) afterLogin(); else toast('Account created. Open the link in the email we sent, then sign in.');
+  };
+  $('#go').onclick = go; $('#pw').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#si').onclick = () => viewLogin(inv.email);
 }
 async function afterLogin(){
   const {data:{user}} = await S.sb.auth.getUser(); if (!user) return viewLogin();
   S.user = user;
+  const jt = LS.get('wms.join', null);
+  if (jt){
+    LS.del('wms.join');
+    const {data:tid, error:je} = await S.sb.rpc('accept_invite', {p_token:jt});
+    if (je) toast(je.message, 'err'); else { LS.set('wms.ctx', {...LS.get('wms.ctx', {}), tenant:tid}); toast('Welcome. You are now in the team.'); }
+  }
   const {data, error} = await S.sb.from('tenant_users').select('tenant_id, role, tenants(name)').eq('user_id', user.id).eq('is_active', true);
   if (error) return toast(error.message, 'err');
   S.tenants = (data || []).map(r => ({id:r.tenant_id, role:r.role, name:r.tenants?.name || 'Company'}));
@@ -720,14 +941,16 @@ async function useTenant(t){
 async function loadLookups(){
   const t = {id:S.tenant};
   const q = (tbl, cols) => S.sb.from(tbl).select(cols).eq('tenant_id', t.id).limit(10000);
-  const [w, l, p, i, u, bc, un] = await Promise.all([q('warehouses', 'id,name,state_code,gstin'), q('locations', 'id,full_code,warehouse_id,is_quarantine'),
-    q('parties', 'id,name,party_type,state_code,is_active'), q('items', 'id,sku,name,uom,mrp,is_active,track_serial,kit_type,is_template'), S.sb.rpc('team_members', {p_tenant:t.id}),
+  const [w, l, p, i, u, bc, un] = await Promise.all([q('warehouses', 'id,code,name,state_code,gstin'), q('locations', 'id,full_code,warehouse_id,is_quarantine'),
+    q('parties', 'id,name,party_type,state_code,is_active'), q('items', 'id,sku,name,uom,mrp,is_active,track_serial,track_batch,track_expiry,kit_type,is_template'), S.sb.rpc('team_members', {p_tenant:t.id}),
     q('item_barcodes', 'item_id,barcode'), q('item_units', 'item_id,unit,factor')]);
   const pl = await q('price_lists', 'id,name,list_type,is_active');
   const tn = await S.sb.from('tenants').select('id,name,gstin,state_code').eq('id', t.id);
   const tc = await q('tally_companies', 'gstin,company_name');
   const uw = await q('user_warehouses', 'user_id,warehouse_id');
   const cs = await q('company_settings', '*');
+  const st = await S.sb.rpc('setup_status', {p_tenant:t.id});
+  S.setup = st.error ? null : st.data;
   S.lk = {wh:{}, loc:{}, party:{}, item:{}, user:{}, bc:{}, parties:(p.data || []).filter(x => x.is_active !== false),
           items:(i.data || []).filter(x => x.is_active !== false), units:un.data || [], whs:w.data || [],
           pls:pl.data || [], locs:l.data || [], tenant:(tn.data || [])[0] || null, tallyCos:tc.data || [], settings:(cs.data || [])[0] || {},
@@ -742,7 +965,7 @@ async function loadLookups(){
 async function signOut(){ await S.sb.auth.signOut(); location.reload(); }
 function viewNewCompany(){
   $('#root').innerHTML = `<div class="card"><h1>Set up your company</h1>
-    <p class="note">If you are joining an existing company, ask its owner to add ${esc(S.user.email)} in Settings, Team, then sign in again.</p>
+    <p class="note">Joining an existing company instead? Ask its owner for an invitation link for ${esc(S.user.email)}.</p>
     <label for="cn">Company name</label><input id="cn">
     <label for="cg">GSTIN</label><input id="cg" maxlength="15" style="text-transform:uppercase">
     <label for="cs">State</label><select id="cs" style="width:100%;height:40px;border:1px solid var(--line);border-radius:6px">${stateOpts().map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select>
@@ -774,9 +997,12 @@ async function openReport(rep){
 }
 async function load(){
   const rep = S.rep; S.loading = true; S.rows = []; render();
+  if (rep.custom === 'library'){ S.loading = false; render(); return; }
   if (rep.custom){
-    const [{data, error}, ex] = await Promise.all([S.sb.rpc('dashboard_summary', {p_tenant:S.tenant}), S.sb.rpc('dashboard_extra', {p_tenant:S.tenant})]);
+    const [{data, error}, ex, st] = await Promise.all([S.sb.rpc('dashboard_summary', {p_tenant:S.tenant}), S.sb.rpc('dashboard_extra', {p_tenant:S.tenant}),
+                                                      S.sb.rpc('setup_status', {p_tenant:S.tenant})]);
     if (error) toast(error.message, 'err');
+    if (st && !st.error) S.setup = st.data;
     S.dash = {...(data || {}), ...((ex && ex.data) || {})}; S.loading = false; render(); return;
   }
   try{
@@ -887,10 +1113,27 @@ function chipText(c, f){
 function chipBar(nShown){
   const chips = S.rep.cols.filter(c => isOn(S.f[c.k])).map(c => [c.k, chipText(c, S.f[c.k])]);
   if (S.q) chips.unshift(['__q', `Any column has “${S.q}”`]);
-  if (!chips.length) return `<div class="chipbar"><span class="count">${QTY.format(nShown)} rows</span></div>`;
+  const colsBtn = MAIN[S.rep.id] ? `<button class="linkbtn colsbtn" data-cols>${allColsOn(S.rep) ? 'Show fewer columns' : `Show all ${S.rep.cols.length} columns`}</button>` : '';
+  if (!chips.length) return `<div class="chipbar"><span class="count">${QTY.format(nShown)} rows</span>${colsBtn}</div>`;
   return `<div class="chipbar"><span class="count">${QTY.format(nShown)} of ${QTY.format(S.rows.length)} rows</span>` +
     chips.map(([k, l]) => `<span class="fchip"><button class="fchip-l" data-colf="${k}">${esc(l)}</button><button class="fchip-x" data-chipx="${k}" aria-label="Remove this filter">✕</button></span>`).join('') +
-    `<button class="linkbtn" data-chipall>Clear all</button></div>`;
+    `<button class="linkbtn" data-chipall>Clear all</button>${colsBtn}</div>`;
+}
+// Row buttons: up to two show; with more, the first shows and the rest go under More
+function actsHtml(list, ri){
+  const acts = list.map((a, ai) => a && {...a, ai}).filter(Boolean);
+  const b = a => `<button class="act${a.warn ? ' warn' : ''}" data-act="${ri}|${a.ai}">${esc(a.label)}</button>`;
+  if (acts.length <= 2) return acts.map(b).join('');
+  return b(acts[0]) + `<button class="act ghost" data-amore="${ri}" aria-haspopup="menu">More ▾</button>`;
+}
+function openMenu(anchor, html){
+  const old = $('#popmenu'); if (old){ old.remove(); if (old._anchor === anchor) return; }
+  const m = document.createElement('div'); m.id = 'popmenu'; m.className = 'popmenu'; m.setAttribute('role', 'menu'); m.innerHTML = html; m._anchor = anchor;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), h = m.offsetHeight, w = m.offsetWidth;
+  m.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+  m.style.top = (r.bottom + h + 8 > innerHeight && r.top - h - 4 > 0 ? r.top - h - 4 : r.bottom + 4) + 'px';
+  const f = m.querySelector('button'); if (f) f.focus();
 }
 
 /* ---------- filter panel ---------- */
@@ -988,74 +1231,78 @@ function cell(c, r){
   if (c.type === 'bool') return v ? 'Yes' : '';
   const s = shown(c, r);
   if (/^(Overdue|Missing|Disallowed|Dead|Cancelled|Expired)/.test(s)) return `<span class="tag bad">${esc(s)}</span>`;
-  if (/^(Due in 7 days|Slow|Paid late|Allowed only|Near expiry|Awaiting approval|Partly done|Draft)/.test(s)) return `<span class="tag warn">${esc(s)}</span>`;
-  if (/^(Generated|Paid on time|Within time|Done|Posted|Approved|Billed)$/.test(s)) return `<span class="tag good">${esc(s)}</span>`;
+  if (/^(Due in 7 days|Slow|Paid late|Allowed only|Near expiry|Awaiting approval|Partly done|Draft|Waiting to join)/.test(s)) return `<span class="tag warn">${esc(s)}</span>`;
+  if (/^(Generated|Paid on time|Within time|Done|Posted|Approved|Billed|Joined)$/.test(s)) return `<span class="tag good">${esc(s)}</span>`;
   return esc(s);
 }
 /* ---------- sidebar menu: sections > screens > tabs ---------- */
 // Each screen is one menu entry; related reports open as tabs inside it.
+// Sections follow the job (sell, buy, stock) rather than the accounts.
+const OFFICE = 'owner admin manager accountant', BOSS = 'owner admin', NOT_CASHIER = 'owner admin manager accountant storekeeper';
 const NAV = [
-  ['Home', [
-    {t:'Dashboard', tabs:[['dashboard']]},
-    {t:'Approvals', tabs:[['approvals']]} ]],
+  ['Today', [
+    {t:'Home', tabs:[['dashboard']]},
+    {t:'All entries', tabs:[['docs']]},
+    {t:'Approvals', need:'approvals', tabs:[['approvals']]} ]],
+  ['Sell', [
+    {t:'Sales orders', tabs:[['sorders','Orders'], ['sorderlines','Items pending'], ['picks','Pick and pack']]},
+    {t:'Customer dues', tabs:[['custinv','Invoices'], ['custageing','Who owes what']]} ]],
+  ['Buy', [
+    {t:'Purchase orders', tabs:[['porders','Orders'], ['porderlines','Items to arrive']]},
+    {t:'Supplier bills', roles:NOT_CASHIER, tabs:[['bills','Bills'], ['vendorageing','What we owe'], ['msme','MSME due dates','msme'], ['msmedis','MSME 43B(h)','msme']]} ]],
   ['Stock', [
-    {t:'Stock position', tabs:[['bins','By bin'], ['lots','By supplier invoice'], ['available','Available to sell'], ['summary','Period summary'], ['variants','By variant']]},
-    {t:'Item ledger', tabs:[['ledger']]},
-    {t:'Serial numbers', tabs:[['serials','Serial numbers'], ['serialhist','History']]},
-    {t:'Kits and bundles', tabs:[['kits']]},
-    {t:'Stock alerts', tabs:[['reorder','Reorder'], ['expiry','Expiry'], ['quarantine','Quarantine']]},
-    {t:'Stock analysis', tabs:[['ageing','Ageing'], ['slow','Slow and dead'], ['vendorstock','Vendor-wise']]} ]],
-  ['Warehouse', [
-    {t:'Putaway and refills', tabs:[['putaway','Putaway pending'], ['refills','Bin refills']]},
-    {t:'Pick lists', tabs:[['picks']]},
-    {t:'Stock counts', tabs:[['counts','Counts'], ['countlines','Differences'], ['cycledue','Cycle count plan']]} ]],
-  ['Sales', [
-    {t:'Documents', tabs:[['docs']]},
-    {t:'Orders', tabs:[['orders','Orders'], ['orderlines','Pending lines']]},
-    {t:'Receivables', tabs:[['custinv','Customer invoices'], ['custageing','Customer ageing']]} ]],
-  ['Purchases', [
-    {t:'Payables', tabs:[['bills','Supplier bills'], ['vendorageing','Vendor ageing']]},
-    {t:'MSME compliance', tabs:[['msme','Payment alerts'], ['msmedis','Sec 43B(h) disallowance']]},
-    {t:'Return to supplier', tabs:[['returnable']]} ]],
-  ['GST and Tally', [
-    {t:'GSTR-1', tabs:[['b2b','B2B'], ['b2cl','B2C large'], ['b2cs','B2C small'], ['cdnr','Credit notes (B2B)'],
-                       ['cdnur','Credit notes (B2C)'], ['hsn','HSN summary'], ['docsissued','Documents issued']]},
-    {t:'GSTR-3B', tabs:[['gstr3b']]},
+    {t:'Stock in hand', tabs:[['bins','By bin'], ['available','Available to sell'], ['lots','By supplier bill'], ['summary','Opening to closing'], ['variants','By size or colour','variants']]},
+    {t:'Item history', tabs:[['ledger']]},
+    {t:'Stock alerts', tabs:[['reorder','Reorder'], ['expiry','Expiry','batch'], ['quarantine','Damaged or expired'], ['returnable','Return to supplier']]},
+    {t:'Warehouse work', tabs:[['putaway','To put away','putaway'], ['refills','Bins to refill','homebins'], ['counts','Stock counts'], ['countlines','Count differences'], ['cycledue','Counting plan']]},
+    {t:'Serial numbers', need:'serials', tabs:[['serials','Where they are'], ['serialhist','History']]},
+    {t:'Kits and bundles', need:'kits', tabs:[['kits']]} ]],
+  ['Reports', [
+    {t:'GST returns', tabs:[['b2b','B2B'], ['b2cl','B2C large'], ['b2cs','B2C small'], ['cdnr','Credit notes B2B'], ['cdnur','Credit notes B2C'],
+                                        ['hsn','HSN summary'], ['docsissued','Documents issued'], ['gstr3b','GSTR-3B']]},
     {t:'E-way bills', tabs:[['eway']]},
-    {t:'Tally', key:'tally', tabs:[['tallysync','Sync queue'], ['tallylog','History'], ['tallysettings','Ledgers'], ['tallycompanies','Companies']]} ]],
-  ['Masters', [
-    {t:'Items', tabs:[['items','Items'], ['barcodes','Barcodes'], ['units','Units'], ['gstrates','GST rates'],
-                      ['reorderlevels','Reorder levels'], ['homebins','Home bins'], ['kitparts','Kit parts']]},
-    {t:'Parties', tabs:[['parties']]},
-    {t:'Pricing', tabs:[['pricelists','Price lists'], ['prices','Rates'], ['schemes','Schemes']]},
-    {t:'Locations', tabs:[['warehouses','Warehouses'], ['binmaster','Bins'], ['counters','Counters and kiosks']]} ]],
-  ['Settings', [
-    {t:'Company', tabs:[['profile','Profile'], ['settings','Settings'], ['backdate','Back-date limits']]},
-    {t:'Team', tabs:[['team']]},
-    {t:'Approval rules', tabs:[['approvalrules']]},
-    {t:'Employee log', tabs:[['audit']]} ]],
+    {t:'Stock analysis', tabs:[['ageing','Ageing'], ['slow','Slow and dead'], ['vendorstock','By supplier']]},
+    {t:'Tally', key:'tally', roles:OFFICE, tabs:[['tallysync','To send'], ['tallylog','History'], ['tallysettings','Ledger names'], ['tallycompanies','Companies']]},
+    {t:'Who changed what', roles:BOSS, tabs:[['audit']]},
+    {t:'All reports', tabs:[['library']]} ]],
+  ['Setup', [
+    {t:'Items', tabs:[['items','Items'], ['barcodes','Barcodes'], ['gstrates','GST rates'], ['units','Other units'], ['reorderlevels','Reorder levels'],
+                                       ['homebins','Home bins'], ['kitparts','Kit parts','kits']]},
+    {t:'Customers and suppliers', tabs:[['parties']]},
+    {t:'Prices and schemes', tabs:[['pricelists','Price lists'], ['prices','Rates'], ['schemes','Schemes']]},
+    {t:'Warehouses and bins', tabs:[['warehouses','Warehouses'], ['binmaster','Bins'], ['counters','Counters and kiosks']]},
+    {t:'Company', roles:BOSS, tabs:[['profile','Details'], ['settings','Settings'], ['approvalrules','Approval rules'], ['backdate','Back-date limits']]},
+    {t:'Team', roles:BOSS, tabs:[['team','People'], ['invites','Invitations']]} ]],
 ];
-// Menu entries a role never needs (the database blocks their changes anyway)
-const NAV_HIDE = {storekeeper:['Settings','tally'], cashier:['Settings','Purchases','tally'], manager:['Settings'], accountant:['Settings']};
+// A screen (need) or tab (third entry) the company does not use yet stays out of the menu
+// until it does, or until an owner ticks Show all screens. Search and All reports still find it.
+const NEED = {
+  approvals:s => s.approval_rules > 0 || s.approvals > 0, msme:s => s.msme_suppliers > 0, variants:s => s.variant_items > 0,
+  batch:s => s.batch_items > 0, putaway:s => s.receiving_bays > 0, homebins:s => s.home_bins > 0,
+  serials:s => s.serial_items > 0, kits:s => s.kit_items > 0
+};
+const NAV_CLOSED = ['Reports', 'Setup'];          // sections that start folded
+const inUse = f => !f || !S.setup || !NEED[f] || NEED[f](S.setup);
+const showAll = () => ['owner','admin'].includes(S.role) && LS.get('wms.showall', false);
+const roleOk = it => !it.roles || it.roles.split(' ').includes(S.role);
 
 function navSections(){
-  if (S._nav && S._nav.role === S.role) return S._nav.list;
-  const hide = NAV_HIDE[S.role] || [], seen = new Set();
-  const list = NAV.filter(([g]) => !hide.includes(g)).map(([g, items]) => [g, items
-    .filter(it => !hide.includes(it.key))
-    .map(it => ({...it, section:g, tabs:it.tabs.map(([id, label]) => {
-        const r = REPORTS.find(x => x.id === id); if (!r) return null; seen.add(id);
-        return {id, label:label || r.title, rep:r}; }).filter(Boolean)}))
-    .filter(it => it.tabs.length)]).filter(([, items]) => items.length);
-  const extra = REPORTS.filter(r => !seen.has(r.id) && !NAV.some(([g, its]) => hide.includes(g) && its.some(it => it.tabs.some(t => t[0] === r.id)))
-                                  && !NAV.some(([, its]) => its.some(it => hide.includes(it.key) && it.tabs.some(t => t[0] === r.id))));
-  if (extra.length) list.push(['More', extra.map(r => ({t:r.title, section:'More', tabs:[{id:r.id, label:r.title, rep:r}]}))]);   // nothing ever disappears
-  S._nav = {role:S.role, list};
+  const key = S.role + '|' + showAll() + '|' + JSON.stringify(S.setup || {});
+  if (S._nav && S._nav.key === key) return S._nav.list;
+  const all = showAll();
+  const list = NAV.map(([g, items]) => [g, items.filter(roleOk).map(it => {
+      const tabs = it.tabs.map(([id, label, need]) => {
+        const r = REPORTS.find(x => x.id === id); if (!r) return null;
+        return {id, label:label || r.title, rep:r, hidden:!all && !inUse(need)};
+      }).filter(Boolean);
+      return {...it, section:g, tabs, hidden:!all && (!inUse(it.need) || tabs.every(t => t.hidden))};
+    }).filter(it => it.tabs.length)]).filter(([, items]) => items.length);
+  S._nav = {key, list};
   return list;
 }
 const navItemOf = id => { for (const [, items] of navSections()) { const it = items.find(i => i.tabs.some(t => t.id === id)); if (it) return it; } return null; };
 function navOpenSet(){
-  if (!S.navOpen) S.navOpen = new Set(LS.get('wms.nav2', NAV.map(g => g[0]).concat('More')));
+  if (!S.navOpen) S.navOpen = new Set(LS.get('wms.nav3', NAV.map(g => g[0]).filter(g => !NAV_CLOSED.includes(g))));
   return S.navOpen;
 }
 function navHtml(rep){
@@ -1067,14 +1314,15 @@ function navHtml(rep){
     const links = [];
     for (const it of items){
       if (q){
-        // match the screen name, its section, or any of its tabs ("hsn" finds GSTR-1 > HSN summary)
+        // match the screen name or any of its tabs ("hsn" finds GST returns > HSN summary), used or not
         const tab = tabHit(it);
-        const whole = it.t.toLowerCase().includes(q);
-        if (!tab && !whole) continue;
-        const target = tab || it.tabs[0];
-        links.push(`<a href="#${target.id}" data-rep="${target.id}">${esc(it.t)}${tab && it.tabs.length > 1 ? `<span class="sub"> › ${esc(tab.label)}</span>` : ''}</a>`);
+        if (!tab && !it.t.toLowerCase().includes(q)) continue;
+        const target = tab || it.tabs.find(t => !t.hidden) || it.tabs[0];
+        links.push(`<a href="#${target.id}" data-rep="${target.id}">${esc(it.t)}${tab && it.tabs.length > 1 ? `<span class="sub"> › ${esc(tab.label)}</span>` : ''}${(it.hidden || target.hidden) ? '<span class="sub"> · not in use yet</span>' : ''}</a>`);
       } else {
-        const target = it.tabs.find(t => t.id === lastTab[it.tabs[0].id]) || it.tabs[0], on = it === curItem;
+        if (it.hidden) continue;
+        const vis = it.tabs.filter(t => !t.hidden);
+        const target = vis.find(t => t.id === lastTab[it.tabs[0].id]) || vis[0], on = it === curItem;
         links.push(`<a href="#${target.id}" data-rep="${target.id}" class="${on ? 'on' : ''}"${on ? ' aria-current="page"' : ''}>${esc(it.t)}</a>`);
       }
     }
@@ -1084,12 +1332,14 @@ function navHtml(rep){
         <svg class="chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>${esc(g)}</button>
       <div class="grp" id="${gid}" ${isOpen ? '' : 'hidden'}>${links.join('')}</div>`;
   }).join('');
-  return html || `<div class="nonav">No screen matches “${esc(S.navq)}”.</div>`;
+  const sw = ['owner','admin'].includes(S.role) && !q ? `<label class="showall"><input type="checkbox" id="showall" ${showAll() ? 'checked' : ''}> Show all screens<span>Also screens for features you do not use yet</span></label>` : '';
+  return (html || `<div class="nonav">No screen matches “${esc(S.navq)}”.</div>`) + sw;
 }
+const visTabs = (it, rep) => it ? it.tabs.filter(t => !t.hidden || t.id === rep.id) : [];
 function tabsHtml(rep){
-  const it = navItemOf(rep.id);
-  if (!it || it.tabs.length < 2) return '';
-  return `<div class="tabs" role="tablist" aria-label="${esc(it.t)}">${it.tabs.map(t =>
+  const it = navItemOf(rep.id), tabs = visTabs(it, rep);
+  if (tabs.length < 2) return '';
+  return `<div class="tabs" role="tablist" aria-label="${esc(it.t)}">${tabs.map(t =>
     `<a href="#${t.id}" role="tab" data-rep="${t.id}" aria-selected="${t.id === rep.id}" class="${t.id === rep.id ? 'on' : ''}">${esc(t.label)}</a>`).join('')}</div>`;
 }
 function rememberTab(id){
@@ -1099,7 +1349,7 @@ function rememberTab(id){
 function toggleNavGroup(g){
   const open = navOpenSet();
   open.has(g) ? open.delete(g) : open.add(g);
-  LS.set('wms.nav2', [...open]);
+  LS.set('wms.nav3', [...open]);
   const b = [...document.querySelectorAll('nav [data-grp]')].find(x => x.dataset.grp === g);
   if (b){ const on = open.has(g); b.setAttribute('aria-expanded', on); document.getElementById(b.getAttribute('aria-controls')).hidden = !on; }
 }
@@ -1111,7 +1361,10 @@ function render(){
   const rows = S.loading ? [] : sorted(filtered()), page = rows.slice(0, S.limit);
   S.page = page;
   const navScroll = document.querySelector('nav') ? document.querySelector('nav').scrollTop : 0;
-  const totals = rep.cols.map(c => c.sum ? rows.reduce((a, r) => a + num(r[c.k]), 0) : null);
+  const cols = shownCols(rep);
+  const totals = cols.map(c => c.sum ? rows.reduce((a, r) => a + num(r[c.k]), 0) : null);
+  const pm = $('#popmenu'); if (pm) pm.remove();
+  const tl = rep.tools || [], mainTool = tl.findIndex(x => /^(Add |New |Record |Invite |Start |Send shown)/.test(x.label));
   const isNumCol = c => c.type === 'num' || c.type === 'money';
   const params = rep.params || rep.range ? `
       <label>${rep.params === 'fy' ? 'Year from' : 'From'}<input type="date" data-param="from" value="${esc(S.params.from)}"></label>
@@ -1126,26 +1379,28 @@ function render(){
       <div id="navlist">${navHtml(rep)}</div></div>
     </nav>
     <main>
-      <div class="head"><h1>${esc((navItemOf(rep.id) || {}).tabs?.length > 1 ? navItemOf(rep.id).t : rep.title)}</h1>
+      <div class="head"><div class="ttl"><h1>${esc(visTabs(navItemOf(rep.id), rep).length > 1 ? navItemOf(rep.id).t : rep.title)}</h1>
+          ${ABOUT[rep.id] ? `<div class="about">${esc(ABOUT[rep.id])}</div>` : ''}</div>
         ${tabsHtml(rep)}
-        <div class="tools${rep.custom ? ' hidden' : ''}">${params}
+        <div class="tools${rep.custom || rep.form ? ' hidden' : ''}">${params}
           <input type="search" id="q" placeholder="Search all columns" value="${esc(S.q)}" aria-label="Search all columns">
-          ${(rep.tools || []).map((x, j) => `<button class="btn" data-tool="${j}">${esc(x.label)}</button>`).join('')}
-          <button class="btn" id="reload">Refresh</button>
-          <button class="btn primary" id="xls" ${rows.length ? '' : 'disabled'}>Export to Excel</button></div>
-        ${rep.note ? `<p>${esc(rep.note)}</p>` : ''}${rep.extra ? rep.extra() : ''}</div>
-      ${rep.custom ? (S.loading ? '<div class="empty">Loading…</div>' : dashHtml()) : ''}
-      ${S.loading || rep.custom ? '' : chipBar(rows.length)}
-      <div class="tablewrap${rep.custom ? ' hidden' : ''}">
+          ${mainTool >= 0 ? `<button class="btn primary" data-tool="${mainTool}">${esc(tl[mainTool].label)}</button>` : ''}
+          <button class="btn" id="xls" ${rows.length ? '' : 'disabled'} title="All columns go to Excel">Export to Excel</button>
+          <button class="btn" data-tmore aria-haspopup="menu">${tl.length > (mainTool >= 0 ? 1 : 0) ? 'More actions' : 'More'} ▾</button></div>
+        ${rep.note ? `<details class="how"><summary>How this screen works</summary>${esc(rep.note)}</details>` : ''}${rep.extra ? rep.extra() : ''}</div>
+      ${rep.custom ? (S.loading ? '<div class="empty">Loading…</div>' : rep.custom === 'library' ? libraryHtml() : homeHtml()) : ''}
+      ${rep.form ? (S.loading ? '<div class="empty">Loading…</div>' : formPageHtml(rep)) : ''}
+      ${S.loading || rep.custom || rep.form ? '' : chipBar(rows.length)}
+      <div class="tablewrap${rep.custom || rep.form ? ' hidden' : ''}">
         ${S.loading ? `<div class="empty">Loading…</div>` : `
-        <table><thead><tr>${rep.cols.map(c => {
+        <table><thead><tr>${cols.map(c => {
           const on = isOn(S.f[c.k]), open = S.pop && S.pop.k === c.k, srt = S.sort && S.sort.k === c.k;
           return `<th class="${isNumCol(c) ? 'n' : ''}"><span class="colh"><button class="sortbtn" data-sort="${c.k}">${esc(c.label)}${srt ? `<span class="arrow">${S.sort.dir === 'asc' ? '▲' : '▼'}</span>` : ''}</button>
             <button class="colf${on ? ' on' : ''}${open ? ' open' : ''}" data-colf="${c.k}" aria-label="Filter ${esc(c.label)}" title="Filter ${esc(c.label)}">${FUNNEL}</button></span></th>`;
         }).join('')}${rep.actions ? '<th><span class="colh">Actions</span></th>' : ''}</tr></thead>
-        <tbody>${page.map((r, ri) => `<tr>${rep.cols.map(c => `<td class="${isNumCol(c) ? 'n' : ''}${isNumCol(c) && num(r[c.k]) < 0 ? ' neg' : ''}">${cell(c, r)}</td>`).join('')}${rep.actions
-            ? `<td>${rep.actions(r).map((a, ai) => a ? `<button class="act${a.warn ? ' warn' : ''}" data-act="${ri}|${ai}">${esc(a.label)}</button>` : '').join('')}</td>` : ''}</tr>`).join('')}</tbody>
-        ${totals.some(x => x !== null) && rows.length ? `<tfoot><tr>${rep.cols.map((c, i) => `<td class="${isNumCol(c) ? 'n' : ''}">${i === 0 ? 'Total' : totals[i] === null ? '' : c.type === 'money' ? INR.format(totals[i]) : QTY.format(totals[i])}</td>`).join('')}${rep.actions ? '<td></td>' : ''}</tr></tfoot>` : ''}
+        <tbody>${page.map((r, ri) => `<tr>${cols.map(c => `<td class="${isNumCol(c) ? 'n' : ''}${isNumCol(c) && num(r[c.k]) < 0 ? ' neg' : ''}">${cell(c, r)}</td>`).join('')}${rep.actions
+            ? `<td class="acts">${actsHtml(rep.actions(r), ri)}</td>` : ''}</tr>`).join('')}</tbody>
+        ${totals.some(x => x !== null) && rows.length ? `<tfoot><tr>${cols.map((c, i) => `<td class="${isNumCol(c) ? 'n' : ''}">${i === 0 ? 'Total' : totals[i] === null ? '' : c.type === 'money' ? INR.format(totals[i]) : QTY.format(totals[i])}</td>`).join('')}${rep.actions ? '<td></td>' : ''}</tr></tfoot>` : ''}
         </table>
         ${!rows.length ? (S.rows.length ? `<div class="empty">Nothing matches these filters. <button class="linkbtn" data-chipall>Clear all filters</button></div>` : `<div class="empty">No rows yet for this report.</div>`) : ''}
         ${rows.length > S.limit ? `<div class="more"><button class="btn" id="more">Show ${Math.min(500, rows.length - S.limit)} more of ${QTY.format(rows.length - S.limit)}</button></div>` : ''}`}
@@ -1437,31 +1692,33 @@ const CRUD = {
     {k:'party_id', label:'Only for this customer', type:'select', options:() => [['', 'All customers'], ...partyOpts('customer')]},
     {k:'valid_from', label:'Valid from', type:'date', req:true, def:isoToday}, {k:'valid_to', label:'Valid to', type:'date'},
     {k:'is_active', label:'Active', type:'check', def:true}]},
-  tenants:{table:'tenants', noun:'company profile', key:['id'], fields:[
-    {k:'name', label:'Company name', req:true}, {k:'legal_name', label:'Legal name (as on GST registration)'}, {k:'trade_name', label:'Trade name'},
-    {k:'gstin', label:'Main GSTIN', upper:true}, {k:'state_code', label:'State', type:'select', options:stateOpts, req:true},
-    {k:'pan', label:'PAN', upper:true}, {k:'address1', label:'Address line 1'}, {k:'address2', label:'Address line 2'},
-    {k:'city', label:'City'}, {k:'pincode', label:'PIN code'}, {k:'phone', label:'Phone'}, {k:'email', label:'Email'},
-    {k:'bank_name', label:'Bank name'}, {k:'bank_account', label:'Bank account number'}, {k:'bank_ifsc', label:'IFSC', upper:true},
-    {k:'invoice_terms', label:'Terms printed on invoices', type:'textarea'},
-    {k:'einvoice_applicable', label:'E-invoicing applies (turnover above Rs 5 crore)', type:'check'}],
+  tenants:{table:'tenants', noun:'company details', key:['id'], fields:[
+    {k:'name', group:'Company', label:'Company name', req:true}, {k:'legal_name', group:'Company', label:'Legal name (as on GST registration)'},
+    {k:'trade_name', group:'Company', label:'Trade name'}, {k:'gstin', group:'Company', label:'Main GSTIN', upper:true},
+    {k:'state_code', group:'Company', label:'State', type:'select', options:stateOpts, req:true}, {k:'pan', group:'Company', label:'PAN', upper:true},
+    {k:'address1', group:'Address', label:'Address line 1'}, {k:'address2', group:'Address', label:'Address line 2'},
+    {k:'city', group:'Address', label:'City'}, {k:'pincode', group:'Address', label:'PIN code'}, {k:'phone', group:'Address', label:'Phone'}, {k:'email', group:'Address', label:'Email'},
+    {k:'bank_name', group:'Bank (printed on invoices)', label:'Bank name'}, {k:'bank_account', group:'Bank (printed on invoices)', label:'Account number'},
+    {k:'bank_ifsc', group:'Bank (printed on invoices)', label:'IFSC', upper:true},
+    {k:'invoice_terms', group:'Invoices', label:'Terms printed on invoices', type:'textarea'},
+    {k:'einvoice_applicable', group:'Invoices', label:'E-invoicing applies to us', type:'check', help:'Required when turnover in any year since 2017-18 crossed Rs 5 crore.'}],
     check:v => (v.gstin && !GSTIN_RE.test(v.gstin) && 'That GSTIN does not look right.') || (v.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v.pan) && 'That PAN does not look right.')
                || (v.pincode && !/^[0-9]{6}$/.test(v.pincode) && 'PIN code has 6 digits.') || (v.bank_ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.bank_ifsc) && 'That IFSC does not look right.')},
   tally_settings:{table:'tally_settings', noun:'Tally settings', key:['tenant_id'], fields:[
-    {k:'sync_from', label:'Send entries dated from', type:'date'},
-    {k:'sales_ledger', label:'Sales ledger ({rate} = GST rate)', req:true}, {k:'purchase_ledger', label:'Purchase ledger ({rate} = GST rate)', req:true},
-    {k:'out_cgst', label:'Output CGST ledger', req:true}, {k:'out_sgst', label:'Output SGST ledger', req:true},
-    {k:'out_igst', label:'Output IGST ledger', req:true}, {k:'out_cess', label:'Output cess ledger', req:true},
-    {k:'in_cgst', label:'Input CGST ledger', req:true}, {k:'in_sgst', label:'Input SGST ledger', req:true},
-    {k:'in_igst', label:'Input IGST ledger', req:true}, {k:'in_cess', label:'Input cess ledger', req:true},
-    {k:'walkin_ledger', label:'Party for counter sales without a customer', req:true},
-    {k:'cash_ledger', label:'Cash ledger', req:true}, {k:'bank_ledger', label:'Bank ledger (receipts and payments)', req:true},
-    {k:'debtors_group', label:'Group for customers', req:true}, {k:'creditors_group', label:'Group for suppliers', req:true},
-    {k:'branch_ledger_prefix', label:'Branch ledger name starts with', req:true},
-    {k:'vt_sales', label:'Sales voucher type', req:true}, {k:'vt_purchase', label:'Purchase voucher type', req:true},
-    {k:'vt_credit_note', label:'Credit note voucher type', req:true}, {k:'vt_debit_note', label:'Debit note voucher type', req:true},
-    {k:'vt_stock_journal', label:'Stock journal voucher type', req:true}, {k:'vt_receipt', label:'Receipt voucher type', req:true},
-    {k:'vt_payment', label:'Payment voucher type', req:true}]},
+    {k:'sync_from', group:'Which entries', label:'Send entries dated from', type:'date'},
+    {k:'sales_ledger', group:'Sales and purchase', label:'Sales ledger ({rate} = GST rate)', req:true}, {k:'purchase_ledger', group:'Sales and purchase', label:'Purchase ledger ({rate} = GST rate)', req:true},
+    {k:'out_cgst', group:'GST ledgers', label:'Output CGST ledger', req:true}, {k:'out_sgst', group:'GST ledgers', label:'Output SGST ledger', req:true},
+    {k:'out_igst', group:'GST ledgers', label:'Output IGST ledger', req:true}, {k:'out_cess', group:'GST ledgers', label:'Output cess ledger', req:true},
+    {k:'in_cgst', group:'GST ledgers', label:'Input CGST ledger', req:true}, {k:'in_sgst', group:'GST ledgers', label:'Input SGST ledger', req:true},
+    {k:'in_igst', group:'GST ledgers', label:'Input IGST ledger', req:true}, {k:'in_cess', group:'GST ledgers', label:'Input cess ledger', req:true},
+    {k:'walkin_ledger', group:'Parties, cash and bank', label:'Party for counter sales without a customer', req:true},
+    {k:'cash_ledger', group:'Parties, cash and bank', label:'Cash ledger', req:true}, {k:'bank_ledger', group:'Parties, cash and bank', label:'Bank ledger (receipts and payments)', req:true},
+    {k:'debtors_group', group:'Parties, cash and bank', label:'Group for customers', req:true}, {k:'creditors_group', group:'Parties, cash and bank', label:'Group for suppliers', req:true},
+    {k:'branch_ledger_prefix', group:'Parties, cash and bank', label:'Branch ledger name starts with', req:true},
+    {k:'vt_sales', group:'Voucher types', label:'Sales voucher type', req:true}, {k:'vt_purchase', group:'Voucher types', label:'Purchase voucher type', req:true},
+    {k:'vt_credit_note', group:'Voucher types', label:'Credit note voucher type', req:true}, {k:'vt_debit_note', group:'Voucher types', label:'Debit note voucher type', req:true},
+    {k:'vt_stock_journal', group:'Voucher types', label:'Stock journal voucher type', req:true}, {k:'vt_receipt', group:'Voucher types', label:'Receipt voucher type', req:true},
+    {k:'vt_payment', group:'Voucher types', label:'Payment voucher type', req:true}]},
   tally_companies:{table:'tally_companies', noun:'Tally company', key:['tenant_id','gstin'], upsert:true, fields:[
     {k:'gstin', label:'GSTIN', type:'select', req:true, options:() => [...new Set([S.lk.tenant && S.lk.tenant.gstin, ...S.lk.whs.map(w => w.gstin)].filter(Boolean))].map(g => [g, g])},
     {k:'company_name', label:'Company name in TallyPrime', req:true}]},
@@ -1473,13 +1730,13 @@ const CRUD = {
     {k:'kit_item_id', label:'Kit', type:'item', req:true}, {k:'component_item_id', label:'Part', type:'item', req:true},
     {k:'qty', label:'Quantity in one kit', type:'num', req:true, def:1}]},
   approval_rules:{table:'approval_rules', noun:'approval rules', key:['tenant_id'], fields:[
-    {k:'discount_above_pct', label:'Sales discount above (%)', type:'num'},
-    {k:'below_cost_needs_approval', label:'Selling below cost needs approval', type:'check'},
-    {k:'credit_limit_needs_approval', label:'Billing over the credit limit needs approval', type:'check'},
-    {k:'adjustment_above_value', label:'Stock adjustment above (Rs)', type:'num'},
-    {k:'purchase_order_above_value', label:'Purchase order above (Rs)', type:'num'},
-    {k:'cancel_needs_approval', label:'Cancelling a posted entry needs approval', type:'check'},
-    {k:'approver_roles', label:'Who approves', type:'select', options:() => [['owner,admin,manager','Owner, admin or manager'],['owner,admin','Owner or admin'],['owner','Owner only']]}],
+    {k:'discount_above_pct', group:'Needs approval when', label:'Sales discount is above (%)', type:'num', help:'Leave blank for no check.'},
+    {k:'below_cost_needs_approval', group:'Needs approval when', label:'Something is sold below cost', type:'check'},
+    {k:'credit_limit_needs_approval', group:'Needs approval when', label:'A bill takes a customer over their credit limit', type:'check'},
+    {k:'adjustment_above_value', group:'Needs approval when', label:'A stock correction is worth more than (Rs)', type:'num', help:'Leave blank for no check.'},
+    {k:'purchase_order_above_value', group:'Needs approval when', label:'A purchase order is worth more than (Rs)', type:'num', help:'Leave blank for no check.'},
+    {k:'cancel_needs_approval', group:'Needs approval when', label:'A posted entry is cancelled', type:'check'},
+    {k:'approver_roles', group:'Who approves', label:'Who approves', type:'select', options:() => [['owner,admin,manager','Owner, admin or manager'],['owner,admin','Owner or admin'],['owner','Owner only']]}],
     before:v => { v.approver_roles = String(v.approver_roles || 'owner,admin,manager').split(','); }},
   cycle_count_plans:{table:'cycle_count_plans', noun:'cycle count plan', key:['warehouse_id'], upsert:true, fields:[
     {k:'warehouse_id', label:'Warehouse', type:'select', options:whOpts, req:true},
@@ -1487,33 +1744,53 @@ const CRUD = {
     {k:'c_days', label:'Count C items every (days)', type:'int', def:90, req:true}, {k:'items_per_count', label:'Items in one cycle count', type:'int', def:25, req:true},
     {k:'is_active', label:'Plan is on', type:'check', def:true}]},
   company_settings:{table:'company_settings', noun:'settings', key:['tenant_id'], fields:[
-    {k:'books_lock_date', label:'Books locked up to (nothing on or before this date)', type:'date'},
-    {k:'costing_method', label:'Stock valuation', type:'select', options:() => [['fifo','FIFO (first in, first out)'],['weighted_avg','Weighted average']],
-     help:'Changing it applies from the next receipt. Decide at the start of a year.'},
-    {k:'negative_stock_mode', label:'When stock would go negative', type:'select', options:() => opt(NEG_LABEL)},
-    {k:'near_expiry_days', label:'Warn when a batch expires within (days)', type:'int', req:true},
-    {k:'po_excess_pct', label:'Allowed receipt over purchase order (%)', type:'num', req:true},
-    {k:'warn_below_cost', label:'Warn when selling below cost', type:'check'},
-    {k:'invoice_check_on', label:'Check goods received against the supplier invoice', type:'check'},
-    {k:'blind_receiving', label:'Blind receiving: the scanner does not show the invoice or order quantities to the receiver', type:'check'},
-    {k:'po_three_way', label:'Three-way match: compare the invoice rate with the purchase order rate', type:'check'},
-    {k:'einvoice_qr_on', label:'Read the e-invoice QR code on supplier bills', type:'check'},
-    {k:'invoice_reader', label:'How supplier invoices are read', type:'select',
-     options:() => [['free_first','Free first; Claude only if the free reading does not tie up'], ['free_only','Free only (never Claude)'], ['claude_first','Claude first (needs the Anthropic key)']],
-     help:'Free reading uses the text inside computer-made PDFs, and free OCR for photos and scans.'},
-    {k:'grn_needs_invoice_match', label:'Post goods received only after the supplier invoice matches', type:'check',
-     help:'Switch this on only after invoice reading is set up (ANTHROPIC_API_KEY in Supabase); otherwise no GRN can be posted.'},
-    {k:'timezone', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
+    {k:'costing_method', group:'Stock', label:'How stock is valued', type:'select', options:() => [['fifo','FIFO: oldest cost goes out first'],['weighted_avg','Weighted average cost']],
+     help:'A change applies from the next goods received. Decide it at the start of a year.'},
+    {k:'negative_stock_mode', group:'Stock', label:'If an entry would take stock below zero', type:'select', options:() => opt(NEG_LABEL)},
+    {k:'near_expiry_days', group:'Stock', label:'Warn about batches expiring within (days)', type:'int', req:true},
+    {k:'warn_below_cost', group:'Stock', label:'Warn when something is sold below its cost', type:'check'},
+    {k:'po_excess_pct', group:'Goods received', label:'Accept up to this % more than the purchase order', type:'num', req:true},
+    {k:'invoice_check_on', group:'Goods received', label:'Check goods received against the supplier invoice', type:'check',
+     help:'Upload or photograph the supplier bill; the app compares its items, quantities and rates with what was received.'},
+    {k:'blind_receiving', group:'Goods received', label:'Hide expected quantities from the person receiving', type:'check',
+     help:'Storekeepers count first; only then does the app show what differs from the bill or order. Owners and admins always see the quantities.'},
+    {k:'po_three_way', group:'Goods received', label:'Compare the bill rate with the purchase order rate', type:'check',
+     help:'Flags a supplier charging more than the rate agreed on the order.'},
+    {k:'einvoice_qr_on', group:'Goods received', label:'Read the QR code on supplier e-invoices', type:'check',
+     help:'Confirms the bill number, date, value and IRN, and catches the same bill entered twice.'},
+    {k:'grn_needs_invoice_match', group:'Goods received', label:'Post goods received only after the supplier bill matches', type:'check',
+     help:'Turn on only after invoice reading is set up (the ANTHROPIC_API_KEY secret in Supabase); otherwise nothing received can be posted.'},
+    {k:'invoice_reader', group:'Reading supplier bills', label:'How supplier bills are read', type:'select', wide:true,
+     options:() => [['free_first','Free reader first; Claude only if the free reading does not add up'], ['free_only','Free reader only (never Claude)'], ['claude_first','Claude first (needs the Anthropic key)']],
+     help:'The free reader uses the text inside computer-made PDFs, and free OCR for photos and scans.'},
+    {k:'books_lock_date', group:'Dates', label:'Books closed up to', type:'date', help:'No entry can be made or changed on or before this date.'},
+    {k:'timezone', group:'Dates', label:'Time zone', type:'select', options:() => [['Asia/Kolkata','India (IST)']]}]},
   role_backdate_limits:{table:'role_backdate_limits', noun:'limit', key:['tenant_id','role'], upsert:true, fields:[
     {k:'role', label:'Role', type:'select', options:() => opt(ROLE_LABEL), req:true},
     {k:'max_days_back', label:'Days back allowed (0 = today only)', type:'int', req:true}]}
 };
 
+function formPageHtml(rep){
+  const cfg = CRUD[rep.form], row = S.rows[0] || null, isNew = !row;
+  const fields = cfg.fields.filter(f => isNew || !f.createOnly), groups = [...new Set(fields.map(f => f.group || ''))];
+  const val = f => row ? row[f.k] : (typeof f.def === 'function' ? f.def() : f.def);
+  return `<div class="fpage" id="fpage"><datalist id="itemlist"></datalist>${groups.map(g => `<section>${g ? `<h3>${esc(g)}</h3>` : ''}
+      <div class="grid2">${fields.filter(f => (f.group || '') === g).map(f => `<div class="${f.type === 'check' || f.type === 'textarea' || f.wide ? 'full' : ''}">${fieldHtml(f, val(f), row, false)}</div>`).join('')}</div></section>`).join('')}
+    <div class="fpfoot"><button class="btn primary" id="fpsave">Save changes</button></div></div>`;
+}
+async function saveFormPage(){
+  const rep = S.rep, cfg = CRUD[rep.form], row = S.rows[0] || null;
+  const b = $('#fpsave'); b.disabled = true;
+  try{
+    const ok = await saveRecord(rep.form, row, $('#fpage'), cfg.fields.filter(f => row || !f.createOnly), !row);
+    if (ok === false) b.disabled = false;
+  }catch(e){ toast(e.message || String(e), 'err'); b.disabled = false; }
+}
 function fieldHtml(f, v, row, locked){
   const id = 'f_' + f.k, val = v === null || v === undefined ? '' : v;
   if (locked) return `<label for="${id}">${esc(f.label)}</label><input id="${id}" value="${esc(f.type === 'select' ? ((typeof f.options === 'function' ? f.options(row) : f.options).find(o => String(o[0]) === String(val)) || [val, val])[1] : val)}" disabled data-raw="${esc(val)}">`;
   const help = f.help ? `<div class="note" style="margin-top:2px">${esc(f.help)}</div>` : '';
-  if (f.type === 'check') return `<label style="display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--ink)"><input type="checkbox" id="${id}" ${val ? 'checked' : ''} style="width:auto;height:auto"> ${esc(f.label)}</label>`;
+  if (f.type === 'check') return `<label class="chkline"><input type="checkbox" id="${id}" ${val ? 'checked' : ''}> <span>${esc(f.label)}${f.help ? `<small>${esc(f.help)}</small>` : ''}</span></label>`;
   const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' *' : ''}</label>`;
   if (f.type === 'select'){
     const o = typeof f.options === 'function' ? f.options(row) : f.options;
@@ -1546,36 +1823,38 @@ function editForm(key, row, preset){
   const valOf = f => f.k in (preset || {}) ? preset[f.k] : isNew ? (typeof f.def === 'function' ? f.def() : f.def) : base[f.k];
   const el = modal(`${isNew ? 'Add' : 'Edit'} ${cfg.noun}`, `<datalist id="itemlist">${S.lk.items.map(i => `<option value="${esc(i.sku)} | ${esc(i.name)}"></option>`).join('')}</datalist>
     <div class="grid2">${fields.map(f => `<div${f.type === 'textarea' ? ' style="grid-column:1/-1"' : ''}>${fieldHtml(f, valOf(f), row, !isNew && (cfg.key || []).includes(f.k))}</div>`).join('')}</div>`,
-    isNew ? `Add ${cfg.noun}` : 'Save', async el2 => {
-      const v = {};
-      for (const f of fields){
-        const x = readField(f, el2);
-        if (x === '__bad'){ toast(`Pick the ${f.label.toLowerCase()} from the list.`, 'err'); return false; }
-        if (typeof x === 'number' && isNaN(x)){ toast(`${f.label} must be a number.`, 'err'); return false; }
-        if (f.req && (x === null || x === undefined || x === '')){ toast(`Enter ${f.label.toLowerCase()}.`, 'err'); return false; }
-        v[f.k] = x;
-      }
-      const bad = cfg.check && cfg.check(v); if (bad){ toast(bad, 'err'); return false; }
-      if (cfg.before) cfg.before(v);
-      const data = Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('_')));
-      let res;
-      if (isNew || cfg.upsert){
-        data.tenant_id = S.tenant;
-        res = cfg.upsert ? await S.sb.from(cfg.table).upsert(data, {onConflict:(cfg.key || ['id']).join(',')}).select()
-                         : await S.sb.from(cfg.table).insert(data).select();
-      } else {
-        let q = S.sb.from(cfg.table).update(data);
-        (cfg.key || ['id']).forEach(k => { q = q.eq(k, base[k]); });
-        res = await q.select();
-      }
-      if (res.error){ toast(friendlyDbError(res.error), 'err'); return false; }
-      if (!res.data || !res.data.length){ toast('Not saved. Your role cannot change this. Ask an owner, admin, manager or accountant.', 'err'); return false; }
-      if (cfg.after) await cfg.after(res.data[0], v, isNew);
-      toast(`${cfg.noun[0].toUpperCase() + cfg.noun.slice(1)} saved.`);
-      await loadLookups(); load();
-    }, true);
+    isNew ? `Add ${cfg.noun}` : 'Save', el2 => saveRecord(key, row, el2, fields, isNew), true);
   const g = el.querySelector('#f_gstin'), st = el.querySelector('#f_state_code');
   if (g && st) g.addEventListener('input', () => { const x = g.value.toUpperCase(); if (/^\d{2}/.test(x) && st.querySelector(`option[value="${x.slice(0, 2)}"]`)) st.value = x.slice(0, 2); });
+}
+async function saveRecord(key, row, el2, fields, isNew){
+  const cfg = CRUD[key], base = row || {};
+  const v = {};
+  for (const f of fields){
+    const x = readField(f, el2);
+    if (x === '__bad'){ toast(`Pick the ${f.label.toLowerCase()} from the list.`, 'err'); return false; }
+    if (typeof x === 'number' && isNaN(x)){ toast(`${f.label} must be a number.`, 'err'); return false; }
+    if (f.req && (x === null || x === undefined || x === '')){ toast(`Enter ${f.label.toLowerCase()}.`, 'err'); return false; }
+    v[f.k] = x;
+  }
+  const bad = cfg.check && cfg.check(v); if (bad){ toast(bad, 'err'); return false; }
+  if (cfg.before) cfg.before(v);
+  const data = Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('_')));
+  let res;
+  if (isNew || cfg.upsert){
+    data.tenant_id = S.tenant;
+    res = cfg.upsert ? await S.sb.from(cfg.table).upsert(data, {onConflict:(cfg.key || ['id']).join(',')}).select()
+                     : await S.sb.from(cfg.table).insert(data).select();
+  } else {
+    let q = S.sb.from(cfg.table).update(data);
+    (cfg.key || ['id']).forEach(k => { q = q.eq(k, base[k]); });
+    res = await q.select();
+  }
+  if (res.error){ toast(friendlyDbError(res.error), 'err'); return false; }
+  if (!res.data || !res.data.length){ toast('Not saved. Your role cannot change this. Ask an owner, admin, manager or accountant.', 'err'); return false; }
+  if (cfg.after) await cfg.after(res.data[0], v, isNew);
+  toast(`${cfg.noun[0].toUpperCase() + cfg.noun.slice(1)} saved.`);
+  await loadLookups(); load();
 }
 function friendlyDbError(e){
   const m = e.message || '';
@@ -1649,6 +1928,52 @@ function teamForm(r){
       toast('Team updated.'); await loadLookups(); load();
     });
 }
+const ROLE_HELP = {owner:'Everything, including settings and the team.', admin:'Everything, including settings and the team.',
+  manager:'All daily work and reports; approves counts and entries. Cannot change settings.', accountant:'Bills, payments, GST returns and Tally. Cannot change settings.',
+  storekeeper:'Receives, moves, picks and counts stock with the phone app.', cashier:'Sells at the counter and takes payments with the phone app.'};
+function inviteLink(token, role){
+  const page = ['storekeeper','cashier'].includes(role) ? 'wms-scanner.html' : 'wms-office.html';
+  return location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, page) + '#join=' + token;
+}
+function inviteForm(){
+  const roles = opt(ROLE_LABEL).filter(([k]) => k !== 'owner' || S.role === 'owner');
+  const el = modal('Invite someone', `
+    <label for="ie">Their email</label><input id="ie" type="email" placeholder="name@example.com">
+    <label for="ir">What they will do</label><select id="ir">${roles.map(([k, l]) => `<option value="${k}" ${k === 'storekeeper' ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <p class="note" id="irh"></p>
+    <p class="note">You get a link to send on WhatsApp or email. They open it, choose a password, and they are in.</p>`, 'Make invitation', async el2 => {
+      const email = el2.querySelector('#ie').value.trim(), role = el2.querySelector('#ir').value;
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Enter their email address.', 'err'); return false; }
+      const {data, error} = await S.sb.rpc('invite_team_member', {p_tenant:S.tenant, p_email:email, p_role:role});
+      if (error){ toast(error.message, 'err'); return false; }
+      await loadLookups();
+      if (S.rep && ['team', 'invites', 'dashboard'].includes(S.rep.id)) load();
+      shareInvite({email:data.email, role, token:data.token});
+      return false;          // the share window replaces this one; keep it open
+    });
+  const upd = () => { el.querySelector('#irh').textContent = ROLE_HELP[el.querySelector('#ir').value] || ''; };
+  el.querySelector('#ir').onchange = upd; upd();
+}
+function shareInvite(r){
+  const link = inviteLink(r.token, r.role), co = (S.tenants.find(x => x.id === S.tenant) || {}).name || 'our company';
+  const msg = `You are invited to ${co} on Warehouse Office as ${ROLE_LABEL[r.role]}. Open this link and choose your password (use ${r.email}):\n${link}`;
+  const lk = 'display:inline-flex;align-items:center;text-decoration:none;color:var(--ink)';
+  modal(`Send the invitation to ${r.email}`, `<p>Send this link only to <b>${esc(r.email)}</b>: whoever opens it can join as ${esc(ROLE_LABEL[r.role])}. It works once, for 14 days.</p>
+    <input id="il" readonly value="${esc(link)}">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn primary" id="icopy">Copy link</button>
+      <a class="btn" style="${lk}" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Send on WhatsApp</a>
+      <a class="btn" style="${lk}" href="mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent('Join ' + co + ' on Warehouse Office')}&body=${encodeURIComponent(msg)}">Send by email</a></div>
+    <p class="note">You can share it again later from Setup, Team, Invitations.</p>`, 'Done', async () => {});
+  $('#il').onclick = e => e.target.select();
+  $('#icopy').onclick = async () => { try{ await navigator.clipboard.writeText(link); toast('Link copied.'); }catch(e){ $('#il').select(); toast('Press Ctrl+C to copy.'); } };
+}
+async function cancelInvite(r){
+  if (!confirm(`Cancel the invitation for ${r.email}? The link will stop working.`)) return;
+  const {error} = await S.sb.rpc('cancel_invite', {p_id:r.id});
+  if (error) return toast(error.message, 'err');
+  toast('Invitation cancelled.'); await loadLookups(); load();
+}
 async function teamActive(r){
   if (r.is_active && !confirm(`${r.email} will no longer be able to open this company. Continue?`)) return;
   const {data, error} = await S.sb.from('tenant_users').update({is_active:!r.is_active}).eq('tenant_id', S.tenant).eq('user_id', r.user_id).select();
@@ -1663,7 +1988,8 @@ const IMPORTS = {
     ['Discount %','0'],['GST %','18',1],['GST from','2017-07-01'],['Barcode','8901234567890'],['Track batch','N'],['Track expiry','N']]},
   parties:{title:'suppliers and customers', cols:[['Name','Sharma Traders',1],['Type','supplier',1],['GSTIN','09ABCDE1234F1Z5'],['State code','09'],
     ['MSME','Y'],['MSME category','micro'],['MSME activity','manufacturing'],['Udyam no',''],['Written agreement','N'],['Credit days','30'],['Credit limit',''],['Tally ledger','']]},
-  price_list_items:{title:'price list rates', cols:[['Price list','Dealer',1],['SKU','ABC-001',1],['From date','2026-04-01',1],['From qty','0'],['Rate','9'],['Discount %','']]}
+  price_list_items:{title:'price list rates', cols:[['Price list','Dealer',1],['SKU','ABC-001',1],['From date','2026-04-01',1],['From qty','0'],['Rate','9'],['Discount %','']]},
+  opening:{title:'opening stock', cols:[['SKU','ABC-001',1],['Warehouse','W1',1],['Bin','A-R01-S1'],['Qty','100',1],['Cost per unit','6.50',1],['Batch',''],['Expiry','']]}
 };
 const yes = v => /^(y|yes|true|1)$/i.test(String(v).trim());
 function toISO(v){
@@ -1678,10 +2004,26 @@ function importForm(kind){
   const el = modal(`Import ${cfg.title} from Excel`, `
     <p class="note">Use the template so the column headings match. Columns marked * are needed.
       <button class="linkbtn" id="tpl">Download template</button></p>
+    ${kind === 'opening' ? `<p class="note">One row per item, warehouse and bin (and batch, if tracked). Warehouse is its code or name. Cost is before GST.
+      Each warehouse becomes one Opening stock entry, posted at once. Importing the same file twice adds the stock twice.</p>
+      ${S.setup && S.setup.stock_in > 0 ? '<p class="note warnnote">Stock has already been entered for this company. Import only what is not in yet.</p>' : ''}
+      <label for="odt">Stock as on</label><input id="odt" type="date" value="${isoToday()}">` : ''}
     <label for="fx">Excel or CSV file</label><input id="fx" type="file" accept=".xlsx,.xls,.csv" style="height:auto;padding:6px">
     <div id="pv" class="note" style="margin-top:10px"></div>`, 'Import', async el2 => {
       if (!el2._rows || !el2._rows.ok.length){ toast('Choose a file with valid rows first.', 'err'); return false; }
-      const n = await runImport(kind, el2._rows.ok);
+      if (kind === 'opening'){
+        // close this window first: posting may ask for approval in a window of its own
+        const rows = el2._rows.ok, date = el2.querySelector('#odt').value || isoToday();
+        closeModal(); toast('Importing opening stock…');
+        try{
+          const r = await runImport(kind, rows, {date});
+          await loadLookups(); load();
+          if (r.posted === r.entries) toast(`${r.done} row(s) imported and posted in ${r.entries} entr${r.entries === 1 ? 'y' : 'ies'}.`);
+          else if (!$('.modal-bg') && !$('#toast.err:not(.hidden)')) toast(`${r.done} row(s) saved, but ${r.entries - r.posted} of ${r.entries} entr${r.entries === 1 ? 'y was' : 'ies were'} not posted. Open All entries: they are drafts; press Post there to see why.`, 'err');
+        }catch(e){ toast(e.message || String(e), 'err'); }
+        return false;
+      }
+      const n = await runImport(kind, el2._rows.ok, el2);
       toast(`${n} row(s) imported.`); await loadLookups(); load();
     });
   el.querySelector('#tpl').onclick = () => {
@@ -1735,6 +2077,21 @@ function validateImport(kind, rows){
         msme_activity:act || null, udyam_no:String(g('udyam no')) || null, has_written_agreement:yes(g('written agreement')),
         credit_days:g('credit days') === '' ? null : parseInt(g('credit days'), 10), credit_limit:n('credit limit'), tally_ledger:String(g('tally ledger')) || null});
     }
+    if (kind === 'opening'){
+      const it = S.lk.items.find(x => x.sku.toUpperCase() === String(g('sku')).toUpperCase().trim());
+      const whv = String(g('warehouse')).trim().toLowerCase(), wh = S.lk.whs.find(w => (w.code || '').toLowerCase() === whv || w.name.toLowerCase() === whv);
+      const binv = String(g('bin')).trim().toUpperCase(), qty = n('qty'), cost = n('cost per unit'), exp = toISO(g('expiry'));
+      if (!it) return fail(`SKU "${g('sku')}" is not in the item master. Add or import the item first.`);
+      if (!wh) return fail(`Warehouse "${g('warehouse')}" not found. Use its code or name.`);
+      const bin = binv ? S.lk.locs.find(l => l.warehouse_id === wh.id && l.full_code.toUpperCase() === binv) : null;
+      if (binv && !bin) return fail(`Bin "${binv}" is not in ${wh.name}.`);
+      if (!(qty > 0)) return fail('Qty must be more than zero.');
+      if (cost === null || isNaN(cost) || cost < 0) return fail('Cost per unit is missing or wrong.');
+      if (exp === 'bad') return fail('Expiry is not a date.');
+      if (it.track_batch && !String(g('batch')).trim()) return fail(`${it.sku} tracks batches: give the batch.`);
+      if (it.track_expiry && !exp) return fail(`${it.sku} tracks expiry: give the expiry date.`);
+      ok.push({warehouse_id:wh.id, item_id:it.id, location_id:bin ? bin.id : null, qty, rate:cost, batch_no:String(g('batch')).trim() || null, expiry_date:exp || null});
+    }
     if (kind === 'price_list_items'){
       const it = S.lk.items.find(x => x.sku.toUpperCase() === String(g('sku')).toUpperCase()), from = toISO(g('from date'));
       if (!g('price list')) return fail('Price list name is needed.');
@@ -1746,8 +2103,25 @@ function validateImport(kind, rows){
   });
   return {ok, bad};
 }
-async function runImport(kind, rows){
+async function runImport(kind, rows, el){
   const chunks = (a, n) => Array.from({length:Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
+  if (kind === 'opening'){
+    const date = (el && el.date) || isoToday();
+    let done = 0, posted = 0, entries = 0;
+    for (const wh of [...new Set(rows.map(r => r.warehouse_id))]){
+      const mine = rows.filter(r => r.warehouse_id === wh);
+      const {data:d, error} = await S.sb.from('documents').insert({tenant_id:S.tenant, doc_type:'opening', doc_no:draftNo(), doc_date:date,
+        warehouse_id:wh, remarks:'Opening stock imported from Excel'}).select('id').single();
+      if (error) throw new Error(friendlyDbError(error));
+      for (const [ci, part] of chunks(mine, 500).entries()){
+        const {error:e2} = await S.sb.from('document_lines').insert(part.map(({warehouse_id, ...x}, i) => ({...x, document_id:d.id, line_no:ci * 500 + i + 1})));
+        if (e2) throw new Error(friendlyDbError(e2) + ' The entry is saved as a draft under All entries.');
+      }
+      done += mine.length; entries++;
+      if (await postDoc(d.id, 'Opening stock', true)) posted++;
+    }
+    return {done, posted, entries};
+  }
   if (kind === 'items'){
     let done = 0;
     for (const part of chunks(rows, 400)){
@@ -1795,7 +2169,7 @@ const APPROVAL_KIND = {discount:'Discount above limit', below_cost:'Below cost',
 function askApproval(msg, args){
   modal('Approval needed', `<p>${esc(msg.replace(/^Needs approval:\s*/, ''))}</p>
     <label for="an">Note for the approver (optional)</label><textarea id="an">${esc(args.p_note || '')}</textarea>
-    <p class="note">The entry stays as it is until an owner or manager approves it under Controls, Approvals.</p>`, 'Ask for approval', async el => {
+    <p class="note">The entry stays as it is until an owner or manager approves it under Today, Approvals.</p>`, 'Ask for approval', async el => {
       const {data, error} = await S.sb.rpc('request_approval', {...args, p_note:el.querySelector('#an').value});
       if (error){ toast(error.message, 'err'); return false; }
       toast(data ? 'Sent for approval.' : 'Already waiting for approval.'); load();
@@ -1824,7 +2198,7 @@ async function supplierReturn(rows){
   askReason(`Return ${rows.length} lot(s) to ${rows[0].supplier}`, 'Reason (printed on the debit note)', 'Make draft return', async reason => {
     const {data, error} = await S.sb.rpc('draft_supplier_return', {p_lots:rows.map(r => r.lot_id), p_reason:reason});
     if (error){ toast(error.message, 'err'); return false; }
-    if (confirm('Draft return made at cost. Post it now? (You can change rates first under Documents.)')) await postDoc(data, 'Return', true);
+    if (confirm('Draft return made at cost. Post it now? (You can change rates first under All entries.)')) await postDoc(data, 'Return', true);
     load();
   });
 }
@@ -1886,7 +2260,7 @@ async function officeMove(wh, item, from, to, qty, why){
 }
 function cycleForm(){
   modal('Start a cycle count', `<label for="cw">Warehouse</label><select id="cw">${whOpts().map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select>
-    <p class="note">Takes the items most overdue (A first). Staff count them blind from the phone app (Count stock); you approve the differences here.</p>`, 'Start count', async el => {
+    <p class="note">Takes the items most overdue (A first). Staff count them from the phone app (Count stock) without seeing the book quantity; you approve the differences here.</p>`, 'Start count', async el => {
       const no = await nextNo('CYC-', 'stock_counts', 'count_no');
       const {error} = await S.sb.rpc('create_cycle_count', {p_wh:el.querySelector('#cw').value, p_count_no:no});
       if (error){ toast(error.message, 'err'); return false; }
@@ -1910,42 +2284,112 @@ async function whAccessForm(r){
     });
 }
 
-/* ---------- dashboard ---------- */
-function dashHtml(){
+/* ---------- Home: set-up steps, shortcuts, only what needs attention ---------- */
+const HOME_ACT = {
+  profile:() => openReport(REPORTS.find(r => r.id === 'profile')), bins:() => binGenerator(), additem:() => editForm('items'),
+  impitems:() => importForm('items'), addparty:() => editForm('parties'), impparties:() => importForm('parties'),
+  impopening:() => importForm('opening'), invite:() => inviteForm(), tally:() => openReport(REPORTS.find(r => r.id === 'tallycompanies')),
+  so:() => orderForm('sales'), po:() => orderForm('purchase'), receipt:() => moneyForm('receipt'), payment:() => moneyForm('payment'),
+  stock:() => openReport(REPORTS.find(r => r.id === 'bins')), phone:() => window.open('wms-scanner.html', '_blank'),
+  hidesetup:() => { LS.set('wms.setup.hide.' + S.tenant, true); render(); }, showsetup:() => { LS.del('wms.setup.hide.' + S.tenant); render(); }
+};
+function setupSteps(){
+  const st = S.setup || {}, wh = (S.lk.whs[0] || {}).name || 'your warehouse';
+  return [
+    {done:st.profile_ok, t:'Company details', s:'Address, PAN and bank account, printed on your invoices.', acts:[['Fill in', 'profile']]},
+    {done:st.bins > 0, t:'Bins', s:`The places in ${wh} where stock sits, such as A-R01-S1. Print their labels once made.`, acts:[['Create bins', 'bins']]},
+    {done:st.items > 0, t:'Items', s:'Your products with HSN code and GST rate.', acts:[['Add item', 'additem'], ['Import from Excel', 'impitems']]},
+    {done:st.parties > 0, t:'Customers and suppliers', s:'With GSTIN, so invoices and GST returns come out right.', acts:[['Add', 'addparty'], ['Import from Excel', 'impparties']]},
+    {done:st.stock_in > 0, t:'Opening stock', s:'What is in the warehouse today, with its cost.', acts:[['Import from Excel', 'impopening']]},
+    {done:st.team > 1 || st.invites > 0, t:'Your team', s:'Invite staff by email. Each person sees only what their job needs.', acts:[['Invite someone', 'invite']]},
+    {done:st.tally_cos > 0, t:'Tally (optional)', s:'Send entries to TallyPrime by themselves.', acts:[['Set up', 'tally']], optional:true}
+  ];
+}
+function homeHtml(){
   const d = S.dash || {}, R = v => '₹' + INR.format(num(v)).replace(/\.00$/, ''), Q = v => QTY.format(num(v));
+  const has = r => r.split(' ').includes(S.role), boss = has(BOSS);
   const card = (label, value, sub, go, tone) => `<button class="card2 ${tone || ''}" ${go ? `data-go="${go}"` : ''}><span>${esc(label)}</span><b>${value}</b><span>${esc(sub || '')}</span></button>`;
+  // 1. set-up steps, until they are done (owners and admins)
+  let setup = '';
+  if (boss && S.setup){
+    const steps = setupSteps(), need = steps.filter(x => !x.optional), done = need.filter(x => x.done).length;
+    if (done < need.length && !LS.get('wms.setup.hide.' + S.tenant, false)){
+      setup = `<section class="setup"><div class="setuphead"><div><h3>Set up your company</h3><span>${done} of ${need.length} done. Each step takes a few minutes.</span></div>
+          <button class="linkbtn" data-home="hidesetup">Hide this list</button></div>
+        <div class="bar"><i style="width:${Math.round(done / need.length * 100)}%"></i></div>
+        <ol>${steps.map(x => `<li class="${x.done ? 'done' : ''}"><span class="tick" aria-hidden="true">${x.done ? '✓' : ''}</span>
+          <div><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div>
+          <div class="stepacts">${x.done ? '<span class="donelbl">Done</span>' : x.acts.map(([l, k], i) => `<button class="btn${i ? '' : ' primary'} small" data-home="${k}">${esc(l)}</button>`).join('')}</div></li>`).join('')}</ol></section>`;
+    }
+  }
+  // 2. shortcuts for this person's job
+  const qa = [
+    [OFFICE + ' cashier', 'so', 'New sales order', 'Customer order; stock is held for it'],
+    [OFFICE, 'po', 'New purchase order', 'Order goods from a supplier'],
+    [OFFICE + ' cashier', 'receipt', 'Money received', 'From a customer, set against their bills'],
+    [OFFICE, 'payment', 'Pay a supplier', 'Set against their oldest bills'],
+    [OFFICE, 'additem', 'Add an item', 'New product with HSN and GST'],
+    ['owner admin manager accountant storekeeper cashier', 'stock', 'Check stock', 'Quantity in each bin'],
+    ['owner admin manager accountant storekeeper cashier', 'phone', 'Open the phone app', 'Receive goods, sell at the counter, count stock']
+  ].filter(x => has(x[0]));
+  const quick = `<h3>Shortcuts</h3><div class="qa">${qa.map(([, k, t, sub]) => `<button class="qabtn" data-home="${k}"><b>${esc(t)}</b><span>${esc(sub)}</span></button>`).join('')}</div>`;
+  // 3. only what needs attention
+  const warn = (n, bad) => num(n) > 0 ? (bad ? 'bad' : 'warn') : '';
+  const att = [
+    [d.approvals_pending, () => card('Approvals waiting', Q(d.approvals_pending), 'Entries held for a decision', 'approvals', 'bad')],
+    [num(d.msme_overdue) + num(d.msme_due_7), () => card('MSME payments', R(d.msme_overdue), `overdue; ${R(d.msme_due_7)} due in 7 days`, 'msme', warn(d.msme_overdue, true) || 'warn')],
+    [d.receivable_overdue, () => card('Customer dues overdue', R(d.receivable_overdue), `${R(d.receivable)} total to receive`, 'custageing', 'warn')],
+    [d.eway_missing, () => card('E-way bills missing', Q(d.eway_missing), 'Movements of Rs 50,000 or more', 'eway', 'bad')],
+    [d.negative_items, () => card('Items below zero', Q(d.negative_items), 'Stock to correct', 'available', 'bad')],
+    [num(d.expired_value) + num(d.near_expiry_value), () => card('Expiring stock', R(d.near_expiry_value), `near expiry; ${R(d.expired_value)} already expired`, 'expiry', warn(d.expired_value, true) || 'warn')],
+    [d.reorder_items, () => card('Items to reorder', Q(d.reorder_items), 'At or below minimum level', 'reorder', 'warn')],
+    [d.counts_to_approve, () => card('Counts to approve', Q(d.counts_to_approve), 'Sent from the phone app', 'counts', 'warn')],
+    [d.drafts, () => card('Entries not posted', Q(d.drafts), 'Saved as drafts; stock not updated', 'docs', 'warn')],
+    [d.putaway_lines, () => card('To put away', Q(d.putaway_lines), 'Lines in the receiving area', 'putaway', 'warn')],
+    [d.refills, () => card('Bins to refill', Q(d.refills), 'Home bins at minimum', 'refills', 'warn')],
+    [d.cycle_due, () => card('Items due for counting', Q(d.cycle_due), 'From the counting plan', 'cycledue', 'warn')],
+    [d.tally_failed, () => card('Tally errors', Q(d.tally_failed), 'Entries Tally did not accept', 'tallysync', 'bad')]
+  ].filter(([n]) => num(n) > 0).map(([, f]) => f());
+  const attention = `<h3>Needs attention</h3>${att.length ? att.join('') : '<div class="allclear">All clear. Nothing needs attention right now.</div>'}`;
+  // 4. the numbers
   const pts = (d.sales_30 || []).map(x => num(x.v)), max = Math.max(1, ...pts), W = 600, H = 70;
   const line = pts.map((v, i) => `${(i / Math.max(1, pts.length - 1) * W).toFixed(1)},${(H - v / max * (H - 6) - 3).toFixed(1)}`).join(' ');
-  const warn = (n, bad) => num(n) > 0 ? (bad ? 'bad' : 'warn') : '';
-  return `<div class="dash">
-    <h3>Today</h3>
+  const nums = `<h3>Business at a glance</h3>
     ${card('Sales today', R(d.sales_today), `${Q(d.bills_today)} bill(s)`, 'docs')}
     ${card('Sales this month', R(d.sales_month), 'Net of returns, with GST', 'docs')}
-    ${card('Purchases this month', R(d.purchases_month), 'Net of returns, with GST', 'docs')}
+    ${has(OFFICE) ? card('Purchases this month', R(d.purchases_month), 'Net of returns, with GST', 'docs') : ''}
     ${card('Stock value', R(d.stock_value), 'At cost', 'summary')}
-    <div class="card2 wide"><span>Sales, last 30 days</span><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" aria-label="Sales trend">
-      <polyline points="${line}" fill="none" stroke="#16213A" stroke-width="2"/></svg></div>
-    <h3>Needs attention</h3>
-    ${card('MSME payments overdue', R(d.msme_overdue), `${R(d.msme_due_7)} due in 7 days`, 'msme', warn(d.msme_overdue, true) || warn(d.msme_due_7))}
-    ${card('Customer dues overdue', R(d.receivable_overdue), `${R(d.receivable)} total receivable`, 'custageing', warn(d.receivable_overdue))}
-    ${card('Items to reorder', Q(d.reorder_items), 'At or below minimum level', 'reorder', warn(d.reorder_items))}
-    ${card('Near expiry', R(d.near_expiry_value), `${R(d.expired_value)} already expired`, 'expiry', warn(d.expired_value, true) || warn(d.near_expiry_value))}
-    ${card('E-way bills missing', Q(d.eway_missing), 'Movements of Rs 50,000 or more', 'eway', warn(d.eway_missing, true))}
-    ${card('Items below zero', Q(d.negative_items), 'Negative stock to correct', 'available', warn(d.negative_items, true))}
-    ${card('Counts to approve', Q(d.counts_to_approve), 'Submitted from the phone', 'counts', warn(d.counts_to_approve))}
-    ${card('Approvals waiting', Q(d.approvals_pending), 'Entries held for a decision', 'approvals', warn(d.approvals_pending, true))}
-    ${card('To put away', Q(d.putaway_lines), 'Lines in the receiving bay', 'putaway', warn(d.putaway_lines))}
-    ${card('Bins to refill', Q(d.refills), 'Home bins at minimum', 'refills', warn(d.refills))}
-    ${card('Cycle counts due', Q(d.cycle_due), 'Items due for counting', 'cycledue', warn(d.cycle_due))}
-    ${card('Drafts not posted', Q(d.drafts), 'Saved but not in stock', 'docs', warn(d.drafts))}
-    <h3>Work in progress</h3>
-    ${card('Open sales orders', Q(d.open_sales_orders), `${Q(d.backorder_qty)} units on backorder`, 'orders', warn(d.backorder_qty))}
-    ${card('Pick lists waiting', Q(d.picks_waiting), 'To pick, pack or bill', 'picks')}
-    ${card('Purchase orders pending', Q(d.open_purchase_orders), 'Goods still to arrive', 'orderlines')}
-    ${card('Not yet in Tally', Q(d.tally_pending), `${Q(d.tally_failed)} with errors`, 'tallysync', warn(d.tally_failed, true) || warn(d.tally_pending))}
-    ${card('Payable to suppliers', R(d.payable), 'All open bills', 'vendorageing')}
-    ${card('Quarantine stock', R(d.quarantine_value), 'Damaged or expired, not for sale', 'quarantine', warn(d.quarantine_value))}
-  </div>`;
+    ${pts.length ? `<div class="card2 wide"><span>Sales, last 30 days</span><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" aria-label="Sales trend">
+      <polyline points="${line}" fill="none" stroke="#16213A" stroke-width="2"/></svg></div>` : ''}`;
+  // 5. work in progress, if any
+  const wip = [
+    [d.open_sales_orders, () => card('Open sales orders', Q(d.open_sales_orders), num(d.backorder_qty) ? `${Q(d.backorder_qty)} units waiting for stock` : 'Stock held for them', 'sorders', warn(d.backorder_qty))],
+    [d.picks_waiting, () => card('Pick lists', Q(d.picks_waiting), 'To pick, pack or bill', 'picks')],
+    [d.open_purchase_orders, () => card('Purchase orders pending', Q(d.open_purchase_orders), 'Goods still to arrive', 'porderlines')],
+    [has(OFFICE) && d.tally_pending, () => card('Not yet in Tally', Q(d.tally_pending), 'Waiting to be sent', 'tallysync')],
+    [has(OFFICE) && d.payable, () => card('Payable to suppliers', R(d.payable), 'All open bills', 'vendorageing')],
+    [d.quarantine_value, () => card('Damaged or expired stock', R(d.quarantine_value), 'Kept aside, not for sale', 'quarantine')]
+  ].filter(([n]) => num(n) > 0).map(([, f]) => f());
+  const hidden = boss && S.setup && LS.get('wms.setup.hide.' + S.tenant, false) && setupSteps().some(x => !x.optional && !x.done)
+    ? '<p class="note" style="grid-column:1/-1"><button class="linkbtn" data-home="showsetup">Show the set-up steps again</button></p>' : '';
+  return `<div class="dash">${setup}${quick}${attention}${nums}${wip.length ? '<h3>Work in progress</h3>' + wip.join('') : ''}${hidden}</div>`;
+}
+
+/* ---------- All reports: every screen with what it is for ---------- */
+function libraryHtml(){
+  const q = (S.libq || '').trim().toLowerCase();
+  const secs = navSections().map(([g, items]) => [g, items.flatMap(it => it.tabs.filter(t => !['library', 'dashboard'].includes(t.id)).map(t =>
+    ({id:t.id, name:it.tabs.length > 1 ? t.rep.title : it.t, hidden:it.hidden || t.hidden})))]).filter(([, l]) => l.length);
+  const seen = new Set(secs.flatMap(([, l]) => l.map(x => x.id)));
+  const other = REPORTS.filter(r => !r.custom && !seen.has(r.id) && ['orders', 'orderlines'].includes(r.id)).map(r => ({id:r.id, name:r.title}));
+  if (other.length) secs.push(['Other', other]);
+  const body = secs.map(([g, l]) => {
+    const f = l.filter(x => !q || (x.name + ' ' + (ABOUT[x.id] || '')).toLowerCase().includes(q));
+    return f.length ? `<h3>${esc(g)}</h3><div class="libgrid">${f.map(x => `<a class="libcard" href="#${x.id}" data-rep="${x.id}"><b>${esc(x.name)}</b>
+      <span>${esc(ABOUT[x.id] || '')}</span>${x.hidden ? '<em>Not in use yet</em>' : ''}</a>`).join('')}</div>` : '';
+  }).join('');
+  return `<div class="lib"><input type="search" id="libq" placeholder="Search, for example: expiry, GST, supplier, count" value="${esc(S.libq || '')}" aria-label="Search reports">
+    <div id="libbody">${body || '<div class="empty">No report matches that.</div>'}</div></div>`;
 }
 
 /* ---------- printing ---------- */
@@ -2109,7 +2553,7 @@ async function uploadInvoiceFile(file, docId){
 }
 async function openInvoiceFile(path, sourceDocId){
   if (!path && sourceDocId){ const {data} = await S.sb.from('documents').select('invoice_file').eq('id', sourceDocId).maybeSingle(); path = data && data.invoice_file; }
-  if (!path) return toast('No supplier invoice has been uploaded for this entry. Use Check supplier invoice on the GRN.', 'err');
+  if (!path) return toast('No supplier invoice has been uploaded for this entry. Use Check supplier invoice on the goods received entry.', 'err');
   const {data, error} = await S.sb.storage.from('invoices').createSignedUrl(path, 600);
   if (error) return toast(error.message, 'err');
   window.open(data.signedUrl, '_blank', 'noopener');
@@ -2152,7 +2596,7 @@ function checkHtml(res, received, editable, doc){
     </tbody></table></div>
     ${res.invoice.read_label ? `<p class="note ${res.invoice.read_confident === false ? 'warnnote' : ''}">${esc(res.invoice.read_label)}.${res.invoice.read_confident === false ? ' Compare the lines above with the bill before saving.' : ''}</p>` : ''}
     ${res.invoice.notes ? `<p class="note">Reading note: ${esc(res.invoice.notes)}</p>` : ''}
-    ${editable && doc.status === 'draft' && !doc.party_doc_no && res.invoice.no ? `<p class="note">The supplier bill no. on this GRN will be set to ${esc(res.invoice.no)}.</p>` : ''}
+    ${editable && doc.status === 'draft' && !doc.party_doc_no && res.invoice.no ? `<p class="note">The supplier bill no. on this entry will be set to ${esc(res.invoice.no)}.</p>` : ''}
     ${editable && doc.status === 'draft' && res.head.some(h => h.fix) ? `<label class="chk"><input type="checkbox" id="fixno" checked> Use invoice no. ${esc(res.invoice.no)} as the supplier bill no.</label>` : ''}`;
 }
 const fmtQty = v => { const n = num(v); return Number.isInteger(n) ? String(n) : n.toFixed(3).replace(/0+$/, ''); };
@@ -2395,7 +2839,7 @@ async function autoTick(force){
 const hhmm = t => t ? new Date(t).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
 function autoStatusHtml(){
   const st = AUTO.state;
-  if (!st || !(st.push_on || st.pull_on)) return `<p class="autostat off" id="autostat">Automatic sync is off. Use <b>Automatic sync…</b> to switch it on.</p>`;
+  if (!st || !(st.push_on || st.pull_on)) return `<p class="autostat off" id="autostat">Automatic sync is off. To switch it on: <b>More actions › Automatic sync…</b></p>`;
   const live = st.lease_until && new Date(st.lease_until) > new Date();
   const p = st.last_push || {}, q = st.last_pull || {};
   const what = [st.push_on && `sends new entries every ${st.every_min} min`, st.pull_on && 'brings new items and parties every 30 min'].filter(Boolean).join(' and ');
@@ -2425,7 +2869,7 @@ function autoSettings(){
       const {error} = await S.sb.rpc('set_tally_auto', {p_tenant:S.tenant, p_push:v('#ap').checked, p_pull:v('#aq').checked, p_every:+v('#am').value});
       if (error){ toast(error.message, 'err'); return false; }
       LS.set('wms.auto.here.' + S.tenant, v('#ah').checked);
-      if (v('#ah').checked && !bridgeCfg().key) toast('Now connect the Tally Bridge on this computer (Connect Tally Bridge).');
+      if (v('#ah').checked && !bridgeCfg().key) toast('Now connect the Tally Bridge on this computer: More actions › Connect Tally Bridge.');
       else toast('Saved.');
       await autoLoadState(); autoRefreshStatus(); autoTick(true);
     });
@@ -2510,8 +2954,18 @@ document.addEventListener('click', e => {
   if (t.closest('#menubtn')){ S.menuOpen = !S.menuOpen; render(); if (S.menuOpen) { const q = $('#navq'); if (q && matchMedia('(min-width:821px)').matches) q.focus(); } return; }
   const a = t.closest('[data-rep]'); if (a){ e.preventDefault(); if (a.closest('nav')){ S.navq = ''; S.menuOpen = false; } openReport(REPORTS.find(r => r.id === a.dataset.rep)); return; }
   const ac = t.closest('[data-act]');
-  if (ac){ const [ri, ai] = ac.dataset.act.split('|').map(Number); const act = S.rep.actions(S.page[ri])[ai]; if (act) act.fn(); return; }
-  const tl = t.closest('[data-tool]'); if (tl){ S.rep.tools[+tl.dataset.tool].fn(); return; }
+  if (ac){ const pm = $('#popmenu'); if (pm) pm.remove(); const [ri, ai] = ac.dataset.act.split('|').map(Number); const act = S.rep.actions(S.page[ri])[ai]; if (act) act.fn(); return; }
+  const tl = t.closest('[data-tool]'); if (tl){ const pm = $('#popmenu'); if (pm) pm.remove(); S.rep.tools[+tl.dataset.tool].fn(); return; }
+  const am = t.closest('[data-amore]');
+  if (am){ const ri = +am.dataset.amore, list = S.rep.actions(S.page[ri]).map((a, ai) => a && {...a, ai}).filter(Boolean).slice(1);
+    openMenu(am, list.map(a => `<button role="menuitem" class="${a.warn ? 'warn' : ''}" data-act="${ri}|${a.ai}">${esc(a.label)}</button>`).join('')); return; }
+  const tm = t.closest('[data-tmore]');
+  if (tm){ const tl2 = S.rep.tools || [], mt = tl2.findIndex(x => /^(Add |New |Record |Invite |Start |Send shown)/.test(x.label));
+    openMenu(tm, tl2.map((x, j) => j === mt ? '' : `<button role="menuitem" data-tool="${j}">${esc(x.label)}</button>`).join('') +
+    `<button role="menuitem" id="reload">Refresh</button>`); return; }
+  if (t.closest('[data-cols]')){ LS.set('wms.cols.' + S.rep.id, !allColsOn(S.rep)); render(); return; }
+  if (t.id === 'fpsave'){ saveFormPage(); return; }
+  { const pm = $('#popmenu'); if (pm && !t.closest('#popmenu')) pm.remove(); }
   if (t.closest('.modal-bg') ) return;
   const cf = t.closest('[data-colf]');
   if (cf){
@@ -2539,10 +2993,11 @@ document.addEventListener('click', e => {
     applyPop(true);   // a quick pick is a whole choice: apply and close
     return;
   }
+  const hm = t.closest('[data-home]'); if (hm && HOME_ACT[hm.dataset.home]){ HOME_ACT[hm.dataset.home](); return; }
   const dc = t.closest('[data-go]'); if (dc && S.rep && S.rep.custom){ openReport(REPORTS.find(r => r.id === dc.dataset.go)); return; }
   if (t.id === 'more'){ S.limit += 500; render(); return; }
   if (t.id === 'xls'){ exportXls(); return; }
-  if (t.id === 'reload'){ load(); return; }
+  if (t.id === 'reload'){ const pm = $('#popmenu'); if (pm) pm.remove(); load(); return; }
   if (t.id === 'so'){ signOut(); return; }
   if (S.menuOpen && !t.closest('nav')){ S.menuOpen = false; render(); return; }
   if (S.pop && !t.closest('#colpop')){ S.pop = null; render(); }
@@ -2550,6 +3005,7 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'coSel'){ useTenant(S.tenants.find(x => x.id === t.value)); return; }
+  if (t.id === 'showall'){ LS.set('wms.showall', t.checked); S._nav = null; render(); return; }
   if (t.dataset.param){ S.params[t.dataset.param] = t.value; load(); return; }
   if (t.matches('[data-cpauto]')){ S.auto = t.checked; LS.set('wms.colAuto', S.auto); readPop(); render(); return; }
   if (t.matches('[data-cpall]')){
@@ -2569,12 +3025,14 @@ document.addEventListener('input', e => {
   }
 });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('#popmenu')){ $('#popmenu').remove(); return; }
   if (e.key === 'Escape' && $('.modal-bg')){ closeModal(); return; }
   if (!S.pop) return;
   if (e.key === 'Escape'){ S.pop = null; render(); }
   if (e.key === 'Enter' && e.target.closest('#colpop') && e.target.type !== 'checkbox'){ e.preventDefault(); applyPop(true); }
 });
 document.addEventListener('input', e => {
+  if (e.target.id === 'libq'){ S.libq = e.target.value; const tmp = document.createElement('div'); tmp.innerHTML = libraryHtml(); $('#libbody').innerHTML = tmp.querySelector('#libbody').innerHTML; return; }
   if (e.target.id !== 'navq') return;
   S.navq = e.target.value; const l = $('#navlist'); if (l && S.rep) l.innerHTML = navHtml(S.rep);
 });
@@ -2584,7 +3042,7 @@ document.addEventListener('keydown', e => {
   if (e.target.id === 'navq' && e.key === 'Escape'){ e.target.value = ''; S.navq = ''; $('#navlist').innerHTML = navHtml(S.rep); }
 });
 window.addEventListener('resize', placePop);
-window.addEventListener('hashchange', () => { const r = REPORTS.find(x => x.id === location.hash.slice(1)); if (r && S.rep && r.id !== S.rep.id) openReport(r); });
+window.addEventListener('hashchange', () => { if (/^#join=/.test(location.hash)) return location.reload(); const r = REPORTS.find(x => x.id === location.hash.slice(1)); if (r && S.rep && r.id !== S.rep.id) openReport(r); });
 boot();
 </script>
 </body>

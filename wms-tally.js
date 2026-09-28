@@ -134,7 +134,7 @@
           const branch = d.doc_type === 'transfer' && C.gstinOf(w) !== C.gstinOf(tw);
           const sideGstin = row.side === 'receiver' ? C.gstinOf(tw) : C.gstinOf(w);
           const company = C.companyFor(sideGstin);
-          if (!company) throw new Error(`No Tally company set for GSTIN ${sideGstin || '(none)'}. Add it in Settings, Tally companies.`);
+          if (!company) throw new Error(`No Tally company set for GSTIN ${sideGstin || '(none)'}. Add it under Reports, Tally, Companies.`);
           const b = bucket(company);
           const L = linesOf(d.id);
           const vtFor = () => ({sales_invoice:S.vt_sales, sales_return:S.vt_credit_note, grn:S.vt_purchase, purchase_return:S.vt_debit_note}[d.doc_type]
@@ -224,7 +224,7 @@
         const isR = row.entity === 'receipt', m = isR ? D.receipts[row.entity_id] : D.payments[row.entity_id];
         if (!m) throw new Error('Entry not loaded.');
         const company = C.companyFor(D.tenant.gstin) || (D.companies[0] || {}).company_name;
-        if (!company) throw new Error('No Tally company set. Add one in Settings, Tally companies.');
+        if (!company) throw new Error('No Tally company set. Add one under Reports, Tally, Companies.');
         const b = bucket(company), p = D.parties[m.party_id], party = C.partyLedger(p);
         addM(b, 'L:' + party, partyMaster(party, isR ? S.debtors_group : S.creditors_group, p.gstin, p.state_code, [p.address1, p.address2, p.city]));
         const allocs = isR ? D.ralloc.filter(a => a.receipt_id === m.id).map(a => ({name:(D.invs[a.invoice_id] || {}).doc_no, amt:num(a.amount), type:'Agst Ref'}))
